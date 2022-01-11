@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Sync365": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files (x86)\\CSoft\\TDMS Server 6.1\\Tdms.Server.Host.exe"
+    }
+  }
+}

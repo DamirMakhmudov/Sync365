@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>C:\Program Files (x86)\CSoft\TDMS Server 6.1\Extensions\Sync365\</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Tdms.Api">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\CSoft\TDMS Server 6.1\Tdms.Api.dll</HintPath>
+    </Reference>
+    <Reference Include="Tdms.Core">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\CSoft\TDMS Server 6.1\Tdms.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Tdms.Server">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\CSoft\TDMS Server 6.1\Tdms.Server.dll</HintPath>
+    </Reference>
+    <Reference Include="Tdms.Web.Server">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\CSoft\TDMS Server 6.1\Tdms.Web.Server.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
