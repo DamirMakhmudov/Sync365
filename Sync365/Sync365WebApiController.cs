@@ -77,15 +77,52 @@ namespace Sync365
         {
             try
             {
-                Logger.Info("GPPgetClaimRegistry: started ");
+                Logger.Info("GPPgetClaimRegistry: started");
+                jsonobject = jsonobjectO;
+                TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
 
+                TDMSObject O_ClaimRegistry = O_Package_Unload.Objects.Create("O_ClaimRegistry");
+                O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value = jsonobject.RZ.Guid;
+                O_ClaimRegistry.Attributes["A_Str_Name"].Value = jsonobject.RZ.ATTR_NAME_REGISTRY;
+                O_ClaimRegistry.Attributes["A_Date_Create"].Value = DateTime.Parse(jsonobject.RZ.ATTR_REGYSTRY_CREATION_DATE);
+                O_ClaimRegistry.Attributes["A_Str_Designation"].Value = jsonobject.RZ.ATTR_Registry_Num;
+                O_ClaimRegistry.Attributes["A_Dat_Req_Deadline"].Value = jsonobject.RZ.ATTR_REGYSTRY_COMPLETE_THE_STAGE_BEFORE;
+
+                TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.ToString());
+                O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
+
+                foreach(jRemark remark in jsonobject.Remarks)
+                {
+                    Logger.Info(remark.Description);
+                    TDMSObject O_DocClaim = O_ClaimRegistry.Objects.Create("O_DocClaim");
+                    O_DocClaim.Attributes["A_Str_Designation"].Value = remark.ATTR_Remark_Num;
+                    O_DocClaim.Attributes["A_Str_ClaimDesc"].Value = remark.ATTR_Remark;
+                    O_DocClaim.Attributes["A_Str_AnswerDesc"].Value = remark.ATTR_Answer;
+                    O_DocClaim.Attributes["A_Str_Answer"].Value = remark.ATTR_Answer_Type;
+                    O_DocClaim.Attributes["A_Int_DocVersion"].Value = remark.ATTR_TechDoc_Version;
+                    O_DocClaim.Attributes["A_Str_GUID_External"].Value = remark.Guid;
+                    O_DocClaim.Attributes["A_Str_ClaimAuthor"].Value = remark.ATTR_AUTHOR_ZM;
+                    O_DocClaim.Attributes["A_User_AnswerAuthor"].Value = remark.ATTR_AUTHOR_ANSWER;
+                    O_DocClaim.Attributes["A_Date_Answer"].Value = remark.ATTR_Answer_Date;
+                    O_DocClaim.Attributes["A_Date_Create"].Value = remark.ATTR_Remark_Date;
+                    O_DocClaim.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
+                    O_DocClaim.Attributes["A_Ref_DocClaimRegistry"].Value = O_ClaimRegistry;
+
+                }
+
+                //string tdmsWordFilePath = System.IO.Path.Combine(userFolderPath, file.FileName);
+                //file.CheckOut(tdmsWordFilePath);
+                //TDMSFile newFile = thisobject.Files.Create("FILE_PDF", pathResultPDF);
+                //thisobject.Update();
+                //thisobject.SaveChanges(TDMSSaveOptions.tdmSaveOptUpdateDefault);
+
+                response = "successful";
             }
             catch (Exception ex)
             {
                 Logger.Error(ex.Message + "\n" + ex.StackTrace);
                 response = "error";
             }
-            jsonobject = jsonobjectO;
 
             //TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
             //TDMSAttributes Attrs = O_Package_Unload.Attributes;
@@ -103,11 +140,9 @@ namespace Sync365
             //O_Package_Unload.Attributes["A_Bool_Load"].Value = true;
             //string taskText = jsonobject.task.ToString().ToLower();
             //var req = this.Request;
+
             ThisApplication.SaveContextObjects();
-            response = "cool2";
             return response;
         }
     }
-
-
 }
