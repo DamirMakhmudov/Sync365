@@ -9,11 +9,100 @@ using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Timers;
 
 namespace Sync365
 {
+    [TdmsApi("ShTask")]
+    public class ShTask
+    {
+        TDMSApplication Application;
+        public ILogger Logger { get; set; }
+
+        public ShTask(TDMSApplication app)
+        {
+            Application = app;
+        }
+        public void Execute()
+        {
+            SetTimer();
+            Logger.Info("eee");
+        }
+
+        private static System.Timers.Timer aTimer;
+        private void SetTimer()
+        {
+            aTimer = new System.Timers.Timer(2000);
+            aTimer.Elapsed += OnTimedEvent;
+            aTimer.Interval = 5000;
+            aTimer.Enabled = true;
+        }
+
+        public void OnTimedEvent(Object source, ElapsedEventArgs e)
+        {
+            Logger.Info("rrr");
+        }
+
+    }
+    //[TdmsApi("ShTask")]
+    //public class ShTask : WebCommand
+    //{
+    //    public ShTasko(TDMSApplication application)
+    //    {
+    //        ThisApplication = application;
+    //        Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+    //    }
+
+    //    public ShTask(TDMSApplication thisApplication, TDMSObject thisObject) : base(thisApplication, thisObject)
+    //    {
+    //        TDMSApplication application;
+    //        //Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+
+    //        Logger.Info("ddd");
+    //    }
+    //    public void Execute()
+    //    {
+    //        Logger.Info("eee");
+    //    }
+
+    //    //private static System.Timers.Timer aTimer;
+    //    //private static void SetTimer()
+    //    //{
+    //    //    aTimer = new System.Timers.Timer(2000);
+    //    //    aTimer.Elapsed += OnTimedEvent;
+    //    //    aTimer.AutoReset = true;
+    //    //    aTimer.Enabled = true;
+    //    //}
+
+    //    //public static void OnTimedEvent(Object source, ElapsedEventArgs e)
+    //    //{
+    //    //    //Console.WriteLine("The Elapsed event was raised at {0:HH:mm:ss.fff}", e.SignalTime);
+    //    //    Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+    //    //    Logger.Info("rrr");
+    //    //}
+    //}
+
+
+    public abstract class WebCommand
+    {
+        public ILogger Logger { get; set; }
+
+        protected TDMSApplication ThisApplication;
+        protected TDMSObject ThisObject;
+        protected TDMSPermissions SysadminPermissions;
+
+        public WebCommand(TDMSApplication app, TDMSObject thisObject)
+        {
+            ThisApplication = app;
+            SysadminPermissions = TDMSPermissions.GetSysadminPermissions(app.Context);
+            ThisObject = thisObject;
+        }
+    }
+
+    /* REST */
     public class Sync365WebApiController : ControllerBase
     {
+        //[TdmsAuthorize] // for avoid authorization
         public TDMSApplication ThisApplication;
         public ILogger Logger { get; set; }
         public TDMSObject thisobject;
@@ -66,7 +155,7 @@ namespace Sync365
             catch (Exception ex)
             {
                 Logger.Error(ex.Message + "\n" + ex.StackTrace);
-                response = "error";
+                response = ex.Message + "\n" + ex.StackTrace;
             }
             return response;
         }
@@ -90,10 +179,10 @@ namespace Sync365
 
                 TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.ToString());
                 O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
+                ThisApplication.SaveContextObjects();
 
-                foreach(jRemark remark in jsonobject.Remarks)
+                foreach (jRemark remark in jsonobject.Remarks)
                 {
-                    Logger.Info(remark.Description);
                     TDMSObject O_DocClaim = O_ClaimRegistry.Objects.Create("O_DocClaim");
                     O_DocClaim.Attributes["A_Str_Designation"].Value = remark.ATTR_Remark_Num;
                     O_DocClaim.Attributes["A_Str_ClaimDesc"].Value = remark.ATTR_Remark;
@@ -107,12 +196,19 @@ namespace Sync365
                     O_DocClaim.Attributes["A_Date_Create"].Value = remark.ATTR_Remark_Date;
                     O_DocClaim.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
                     O_DocClaim.Attributes["A_Ref_DocClaimRegistry"].Value = O_ClaimRegistry;
+                    O_DocClaim.Attributes["A_Str_ClaimAuthor"].Value = O_ClaimRegistry;
 
+                    
+                    foreach (jFile file in remark.Files)
+                    {
+                        string tdmsWordFilePath = System.IO.Path.Combine(file.Path);
+                        TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", file.Path);
+                        //O_DocClaim.SaveChanges(TDMSSaveOptions.tdmSaveOptUpdateDefault);
+                        ThisApplication.SaveContextObjects();
+                    }
                 }
 
-                //string tdmsWordFilePath = System.IO.Path.Combine(userFolderPath, file.FileName);
                 //file.CheckOut(tdmsWordFilePath);
-                //TDMSFile newFile = thisobject.Files.Create("FILE_PDF", pathResultPDF);
                 //thisobject.Update();
                 //thisobject.SaveChanges(TDMSSaveOptions.tdmSaveOptUpdateDefault);
 
@@ -121,7 +217,7 @@ namespace Sync365
             catch (Exception ex)
             {
                 Logger.Error(ex.Message + "\n" + ex.StackTrace);
-                response = "error";
+                response = ex.Message + "\n" + ex.StackTrace;
             }
 
             //TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
@@ -144,5 +240,7 @@ namespace Sync365
             ThisApplication.SaveContextObjects();
             return response;
         }
+
+        
     }
 }
