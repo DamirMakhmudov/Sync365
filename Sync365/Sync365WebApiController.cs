@@ -3,6 +3,7 @@ using Tdms.Api;
 using Tdms.Log;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Reflection;
 using System.Web;
 using System.Net;
@@ -10,95 +11,149 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Timers;
+using System.Net.Http;
 
 namespace Sync365
 {
+    /* SCHEDULER */
     [TdmsApi("ShTask")]
     public class ShTask
     {
-        TDMSApplication Application;
+        TDMSApplication ThisApplication;
         public ILogger Logger { get; set; }
+        public string response;
 
-        public ShTask(TDMSApplication app)
+        public ShTask(TDMSApplication application)
         {
-            Application = app;
+            ThisApplication = application;
+            Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
         }
         public void Execute()
         {
-            SetTimer();
-            Logger.Info("eee");
-        }
+            try
+            {
+                Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+                Logger.Info("Execute started");
 
-        private static System.Timers.Timer aTimer;
-        private void SetTimer()
-        {
-            aTimer = new System.Timers.Timer(2000);
-            aTimer.Elapsed += OnTimedEvent;
-            aTimer.Interval = 5000;
-            aTimer.Enabled = true;
-        }
+                TDMSQuery qO_ClaimRegistry = ThisApplication.CreateQuery();
+                qO_ClaimRegistry.AddCondition(TDMSQueryConditionType.tdmQueryConditionObjectDef, "O_ClaimRegistry");
+                qO_ClaimRegistry.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "= Null or =''", "A_Bool_Started");
 
-        public void OnTimedEvent(Object source, ElapsedEventArgs e)
-        {
-            Logger.Info("rrr");
-        }
+                Logger.Info("_ClaimRegistry conunt: " + qO_ClaimRegistry.Objects.Count.ToString());
 
+                foreach (TDMSObject O_ClaimRegistry in qO_ClaimRegistry.Objects)
+                {
+                    Logger.Info("Done");
+
+                    O_ClaimRegistry.Attributes["A_Bool_Started"].Value = true;
+                }
+
+                //ThisApplication.SaveChanges();
+
+                foreach (TDMSObject O_ClaimRegistry in qO_ClaimRegistry.Objects)
+                {
+                    Logger.Info(O_ClaimRegistry.Description);
+                    TDMSQuery qO_DocClaim = ThisApplication.CreateQuery();
+                    qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionObjectDef, "O_DocClaim");
+                    qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, O_ClaimRegistry, "A_Ref_Parent");
+                    qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "= Null or =''", "A_Bool_Started");
+                    qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "<> ''", "A_Str_Files");
+
+                    Logger.Info("O_DocClaim: " + qO_DocClaim.Objects.Count.ToString());
+
+                    foreach (TDMSObject O_DocClaim in qO_DocClaim.Objects)
+                    {
+                        O_DocClaim.Attributes["A_Bool_Started"].Value = true;
+
+                        String StrFiles = O_DocClaim.Attributes["A_Str_Files"].Value.ToString();
+                        string[] words = StrFiles.Split(';');
+                        foreach (var word in words)
+                        {
+                            if (word != "")
+                            {
+                                TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", word);
+                                //    //ThisApplication.SaveContextObjects();
+                            }
+                        }
+                    }
+
+                    ResponseJson rjsonobject = new ResponseJson();
+                    rjsonobject.SystemName = ThisApplication.DatabaseName;
+                    rjsonobject.Result = "true";
+                    rjsonobject.Date = DateTime.Now.ToString();
+                    rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
+                    rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
+                    rjsonobject.Completed = true;
+                    
+                    //var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
+                    //var data = new StringContent(json, Encoding.UTF8, "application/json");
+                    var url = "http://192.168.16.208:444/api/GPPimportRZstatus";
+                    //using var client = new HttpClient();
+                    //var responsee = client.PostAsync(url, data);
+                    //string result = responsee.Content.ReadAsStringAsync().Result;
+
+                    var request = WebRequest.Create(url);
+                    request.Method = "POST";
+
+                    //var user = new User("John Doe", "gardener");
+                    //var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
+                    //var data = new StringContent(json, Encoding.UTF8, "application/json");
+
+                    var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
+                    byte[] byteArray = Encoding.UTF8.GetBytes(json);
+
+                    request.ContentType = "application/x-www-form-urlencoded";
+                    request.ContentLength = byteArray.Length;
+
+                    using var reqStream = request.GetRequestStream();
+                    reqStream.Write(byteArray, 0, byteArray.Length);
+
+                    using var response = request.GetResponse();
+                    Console.WriteLine(((HttpWebResponse)response).StatusDescription);
+
+                    using var respStream = response.GetResponseStream();
+
+                    using var reader = new StreamReader(respStream);
+                    string data = reader.ReadToEnd();
+                    Logger.Info("here");
+                    Logger.Info(data);
+                    ThisApplication.SaveChanges();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex.Message + "\n" + ex.StackTrace);
+                response = ex.Message + "\n" + ex.StackTrace;
+            }
+
+            /*
+            ResponseJson rjsonobject = new ResponseJson();
+            rjsonobject.SystemName = ThisApplication.DatabaseGuid;
+            rjsonobject.Result = response;
+            rjsonobject.Date = DateTime.Now.ToString();
+            rjsonobject.ObjGuid = exGUID;
+            rjsonobject.ObjGuidExternal = inGUID;
+
+            if (response == "true")
+            {
+                rjsonobject.Completed = true;
+            }
+            else
+            {
+                rjsonobject.Completed = false;
+            }
+            */
+            //foreach (jFile file in remark.Files)
+            //{
+            //    //string tdmsWordFilePath = System.IO.Path.Combine(file.Path);
+            //    //TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", file.Path);
+            //    FilesString += file.Path + ";";
+            //    //ThisApplication.SaveContextObjects();
+            //}
+            //O_DocClaim.Attributes["A_Str_Files"].Value = FilesString;
+        }
     }
-    //[TdmsApi("ShTask")]
-    //public class ShTask : WebCommand
-    //{
-    //    public ShTasko(TDMSApplication application)
-    //    {
-    //        ThisApplication = application;
-    //        Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
-    //    }
-
-    //    public ShTask(TDMSApplication thisApplication, TDMSObject thisObject) : base(thisApplication, thisObject)
-    //    {
-    //        TDMSApplication application;
-    //        //Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
-
-    //        Logger.Info("ddd");
-    //    }
-    //    public void Execute()
-    //    {
-    //        Logger.Info("eee");
-    //    }
-
-    //    //private static System.Timers.Timer aTimer;
-    //    //private static void SetTimer()
-    //    //{
-    //    //    aTimer = new System.Timers.Timer(2000);
-    //    //    aTimer.Elapsed += OnTimedEvent;
-    //    //    aTimer.AutoReset = true;
-    //    //    aTimer.Enabled = true;
-    //    //}
-
-    //    //public static void OnTimedEvent(Object source, ElapsedEventArgs e)
-    //    //{
-    //    //    //Console.WriteLine("The Elapsed event was raised at {0:HH:mm:ss.fff}", e.SignalTime);
-    //    //    Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
-    //    //    Logger.Info("rrr");
-    //    //}
-    //}
-
-
-    public abstract class WebCommand
-    {
-        public ILogger Logger { get; set; }
-
-        protected TDMSApplication ThisApplication;
-        protected TDMSObject ThisObject;
-        protected TDMSPermissions SysadminPermissions;
-
-        public WebCommand(TDMSApplication app, TDMSObject thisObject)
-        {
-            ThisApplication = app;
-            SysadminPermissions = TDMSPermissions.GetSysadminPermissions(app.Context);
-            ThisObject = thisObject;
-        }
-    }
-
+    
     /* REST */
     public class Sync365WebApiController : ControllerBase
     {
@@ -131,7 +186,7 @@ namespace Sync365
                     Attrs["A_Str_GUID_External"].Value = jsonobject.FolderGuid;
                     Attrs["A_Date_Load"].Value = DateTime.Now;
                     O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_OnReview"];
-                    Logger.Info("cool");
+                    Logger.Info("true");
                 }
                 else
                 {
@@ -149,7 +204,7 @@ namespace Sync365
                 //var req = this.Request;
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
-                response = "cool1";
+                response = "true";
                 return response;
             }
             catch (Exception ex)
@@ -162,7 +217,7 @@ namespace Sync365
 
         /* Flow 2 */
         [Route("api/GPPgetClaimRegistry"), HttpPost]
-        public string GPPgetClaimRegistry([FromBody] JsonObject jsonobjectO)
+        public String GPPgetClaimRegistry([FromBody] JsonObject jsonobjectO)
         {
             try
             {
@@ -176,11 +231,12 @@ namespace Sync365
                 O_ClaimRegistry.Attributes["A_Date_Create"].Value = DateTime.Parse(jsonobject.RZ.ATTR_REGYSTRY_CREATION_DATE);
                 O_ClaimRegistry.Attributes["A_Str_Designation"].Value = jsonobject.RZ.ATTR_Registry_Num;
                 O_ClaimRegistry.Attributes["A_Dat_Req_Deadline"].Value = jsonobject.RZ.ATTR_REGYSTRY_COMPLETE_THE_STAGE_BEFORE;
-
+                O_ClaimRegistry.Attributes["A_Str_ClaimAuthor"].Value = jsonobject.RZ.ATTR_Registry_UserInitiated;
+                
                 TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.ToString());
                 O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
                 ThisApplication.SaveContextObjects();
-
+                String FilesString = "";
                 foreach (jRemark remark in jsonobject.Remarks)
                 {
                     TDMSObject O_DocClaim = O_ClaimRegistry.Objects.Create("O_DocClaim");
@@ -196,23 +252,18 @@ namespace Sync365
                     O_DocClaim.Attributes["A_Date_Create"].Value = remark.ATTR_Remark_Date;
                     O_DocClaim.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
                     O_DocClaim.Attributes["A_Ref_DocClaimRegistry"].Value = O_ClaimRegistry;
-                    O_DocClaim.Attributes["A_Str_ClaimAuthor"].Value = O_ClaimRegistry;
-
                     
                     foreach (jFile file in remark.Files)
                     {
-                        string tdmsWordFilePath = System.IO.Path.Combine(file.Path);
-                        TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", file.Path);
-                        //O_DocClaim.SaveChanges(TDMSSaveOptions.tdmSaveOptUpdateDefault);
-                        ThisApplication.SaveContextObjects();
+                        //string tdmsWordFilePath = System.IO.Path.Combine(file.Path);
+                        //TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", file.Path);
+                        FilesString += file.Path + ";";
+                        //ThisApplication.SaveContextObjects();
                     }
+                    O_DocClaim.Attributes["A_Str_Files"].Value = FilesString;
                 }
 
-                //file.CheckOut(tdmsWordFilePath);
-                //thisobject.Update();
-                //thisobject.SaveChanges(TDMSSaveOptions.tdmSaveOptUpdateDefault);
-
-                response = "successful";
+                response = "true";
             }
             catch (Exception ex)
             {
@@ -238,9 +289,80 @@ namespace Sync365
             //var req = this.Request;
 
             ThisApplication.SaveContextObjects();
+
             return response;
         }
-
-        
     }
 }
+
+/* Restricted
+    private static System.Timers.Timer aTimer;
+    private void SetTimer()
+    {
+        aTimer = new System.Timers.Timer(2000);
+        aTimer.Elapsed += OnTimedEvent;
+        aTimer.Interval = 5000;
+        aTimer.Enabled = true;
+    }
+
+    public void OnTimedEvent(Object source, ElapsedEventArgs e)
+    {
+        Logger.Info("rrr");
+    }
+*/
+
+/* Variant with abstract class
+[TdmsApi("ShTask")]
+public class ShTask : WebCommand
+{
+    public ShTasko(TDMSApplication application)
+    {
+        ThisApplication = application;
+        Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+    }
+
+    public ShTask(TDMSApplication thisApplication, TDMSObject thisObject) : base(thisApplication, thisObject)
+    {
+        TDMSApplication application;
+        //Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+
+        Logger.Info("ddd");
+    }
+    public void Execute()
+    {
+        Logger.Info("eee");
+    }
+
+    private static System.Timers.Timer aTimer;
+    private static void SetTimer()
+    {
+        aTimer = new System.Timers.Timer(2000);
+        aTimer.Elapsed += OnTimedEvent;
+        aTimer.AutoReset = true;
+        aTimer.Enabled = true;
+    }
+
+    public static void OnTimedEvent(Object source, ElapsedEventArgs e)
+    {
+        //Console.WriteLine("The Elapsed event was raised at {0:HH:mm:ss.fff}", e.SignalTime);
+        Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+        Logger.Info("rrr");
+    }
+}
+
+public abstract class WebCommand
+{
+    public ILogger Logger { get; set; }
+
+    protected TDMSApplication ThisApplication;
+    protected TDMSObject ThisObject;
+    protected TDMSPermissions SysadminPermissions;
+
+    public WebCommand(TDMSApplication app, TDMSObject thisObject)
+    {
+        ThisApplication = app;
+        SysadminPermissions = TDMSPermissions.GetSysadminPermissions(app.Context);
+        ThisObject = thisObject;
+    }
+}
+*/

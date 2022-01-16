@@ -213,42 +213,53 @@ namespace Sync365
 
     public class jStatus
     {
-        /// <summary>
-        /// Îïèñàíèå ñòàòóñà
-        /// </summary>
         public string Description { get; set; }
 
-        /// <summary>
-        /// Ñèñòåìíîå èìÿ ñòàòóñà
-        /// </summary>
         public string Sysname { get; set; }
 
-        /// <summary>
-        /// Âðåìÿ èçìåíåíèÿ ñòàòóñà
-        /// </summary>
         public string StatusModifyTime { get; set; }
 
-        /// <summary>
-        /// Ïîëüçîâàòåëü, èçìåíèâøèé ñòàòóñ
-        /// </summary>
         public string StatusModifyUser { get; set; }
     }
 
     public class jExpert
     {
-        /// <summary>
-        /// Îïèñàíèå ýêñïåðòà
-        /// </summary>
         public string Description { get; set; }
 
-        /// <summary>
-        /// Ñèñòåìíîå èìÿ ýêñïåðòà
-        /// </summary>
         public string Sysname { get; set; }
 
-        /// <summary>
-        /// Çàêîí÷èë ðàáîòó
-        /// </summary>
         public bool Finished { get; set; }
+    }
+
+    public class ResponseJson
+    {
+        /// <summary>
+        /// Имя системы, отправляющей запрос
+        public string SystemName { get; set; }
+
+        /// <summary>
+        /// Флаг - выполнена ли операция успешно
+        /// </summary>
+        public bool Completed { get; set; }
+
+        /// <summary>
+        /// Подробности о выполнении операции (ошибки)
+        /// </summary>
+        public string Result { get; set; }
+
+        /// <summary>
+        /// Дата и время завершения операции
+        /// </summary>
+        public string Date { get; set; }
+
+        /// <summary>
+        /// Идентификатор объекта в системе, отправляющей запрос
+        /// </summary>
+        public string ObjGuid { get; set; }
+
+        /// <summary>
+        /// Идентификатор объекта во внешней системе
+        /// </summary>
+        public string ObjGuidExternal { get; set; }
     }
 }
