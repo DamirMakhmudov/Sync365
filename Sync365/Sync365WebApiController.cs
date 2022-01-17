@@ -22,6 +22,7 @@ namespace Sync365
         TDMSApplication ThisApplication;
         public ILogger Logger { get; set; }
         public string response;
+        public string systemname = "ИУС СЭТД";
 
         public ShTask(TDMSApplication application)
         {
@@ -48,109 +49,84 @@ namespace Sync365
                     O_ClaimRegistry.Attributes["A_Bool_Started"].Value = true;
                 }
 
-                //ThisApplication.SaveChanges();
-
                 foreach (TDMSObject O_ClaimRegistry in qO_ClaimRegistry.Objects)
                 {
-                    Logger.Info(O_ClaimRegistry.Description);
-                    TDMSQuery qO_DocClaim = ThisApplication.CreateQuery();
-                    qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionObjectDef, "O_DocClaim");
-                    qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, O_ClaimRegistry, "A_Ref_Parent");
-                    qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "= Null or =''", "A_Bool_Started");
-                    qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "<> ''", "A_Str_Files");
-
-                    Logger.Info("O_DocClaim: " + qO_DocClaim.Objects.Count.ToString());
-
-                    foreach (TDMSObject O_DocClaim in qO_DocClaim.Objects)
+                    try
                     {
-                        O_DocClaim.Attributes["A_Bool_Started"].Value = true;
+                        Logger.Info(O_ClaimRegistry.Description);
+                        TDMSQuery qO_DocClaim = ThisApplication.CreateQuery();
+                        qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionObjectDef, "O_DocClaim");
+                        qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, O_ClaimRegistry, "A_Ref_Parent");
+                        qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "= Null or =''", "A_Bool_Started");
+                        qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "<> ''", "A_Str_Files");
 
-                        String StrFiles = O_DocClaim.Attributes["A_Str_Files"].Value.ToString();
-                        string[] words = StrFiles.Split(';');
-                        foreach (var word in words)
+                        Logger.Info("O_DocClaim: " + qO_DocClaim.Objects.Count.ToString());
+
+                        foreach (TDMSObject O_DocClaim in qO_DocClaim.Objects)
                         {
-                            if (word != "")
+                            O_DocClaim.Attributes["A_Bool_Started"].Value = true;
+
+                            String StrFiles = O_DocClaim.Attributes["A_Str_Files"].Value.ToString();
+                            string[] words = StrFiles.Split(';');
+                            foreach (var word in words)
                             {
-                                TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", word);
-                                //    //ThisApplication.SaveContextObjects();
+                                if (word != "")
+                                {
+                                    TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", word);
+                                    //    //ThisApplication.SaveContextObjects();
+                                }
                             }
                         }
+
+                        ResponseJson rjsonobject = new ResponseJson();
+                        rjsonobject.SystemName = systemname;
+                        rjsonobject.Result = "true";
+                        rjsonobject.Date = DateTime.Now.ToString();
+                        rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
+                        rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
+                        rjsonobject.Completed = true;
+                        var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
+
+                        var data = sendR(json);
+                        Logger.Info(data);
+                        ThisApplication.SaveChanges();
+                    }catch(Exception ex)
+                    {
+                        ResponseJson rjsonobject = new ResponseJson();
+                        rjsonobject.SystemName = systemname;
+                        rjsonobject.Result = ex.Message + "\n" + ex.StackTrace;
+                        rjsonobject.Date = DateTime.Now.ToString();
+                        rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
+                        rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
+                        rjsonobject.Completed = false;
+                        var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
+                        var data = sendR(json);
+                        Logger.Error(data);
                     }
-
-                    ResponseJson rjsonobject = new ResponseJson();
-                    rjsonobject.SystemName = ThisApplication.DatabaseName;
-                    rjsonobject.Result = "true";
-                    rjsonobject.Date = DateTime.Now.ToString();
-                    rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
-                    rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
-                    rjsonobject.Completed = true;
-                    
-                    //var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
-                    //var data = new StringContent(json, Encoding.UTF8, "application/json");
-                    var url = "http://192.168.16.208:444/api/GPPimportRZstatus";
-                    //using var client = new HttpClient();
-                    //var responsee = client.PostAsync(url, data);
-                    //string result = responsee.Content.ReadAsStringAsync().Result;
-
-                    var request = WebRequest.Create(url);
-                    request.Method = "POST";
-
-                    //var user = new User("John Doe", "gardener");
-                    //var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
-                    //var data = new StringContent(json, Encoding.UTF8, "application/json");
-
-                    var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
-                    byte[] byteArray = Encoding.UTF8.GetBytes(json);
-
-                    request.ContentType = "application/x-www-form-urlencoded";
-                    request.ContentLength = byteArray.Length;
-
-                    using var reqStream = request.GetRequestStream();
-                    reqStream.Write(byteArray, 0, byteArray.Length);
-
-                    using var response = request.GetResponse();
-                    Console.WriteLine(((HttpWebResponse)response).StatusDescription);
-
-                    using var respStream = response.GetResponseStream();
-
-                    using var reader = new StreamReader(respStream);
-                    string data = reader.ReadToEnd();
-                    Logger.Info("here");
-                    Logger.Info(data);
-                    ThisApplication.SaveChanges();
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(ex.Message + "\n" + ex.StackTrace);
                 response = ex.Message + "\n" + ex.StackTrace;
+                Logger.Error(response);
             }
+        }
 
-            /*
-            ResponseJson rjsonobject = new ResponseJson();
-            rjsonobject.SystemName = ThisApplication.DatabaseGuid;
-            rjsonobject.Result = response;
-            rjsonobject.Date = DateTime.Now.ToString();
-            rjsonobject.ObjGuid = exGUID;
-            rjsonobject.ObjGuidExternal = inGUID;
-
-            if (response == "true")
-            {
-                rjsonobject.Completed = true;
-            }
-            else
-            {
-                rjsonobject.Completed = false;
-            }
-            */
-            //foreach (jFile file in remark.Files)
-            //{
-            //    //string tdmsWordFilePath = System.IO.Path.Combine(file.Path);
-            //    //TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", file.Path);
-            //    FilesString += file.Path + ";";
-            //    //ThisApplication.SaveContextObjects();
-            //}
-            //O_DocClaim.Attributes["A_Str_Files"].Value = FilesString;
+        public string sendR(string json)
+        {
+            var url = "http://192.168.16.208:444/api/GPPimportRZstatus";
+            var request = WebRequest.Create(url);
+            request.Method = "POST";
+            byte[] byteArray = Encoding.UTF8.GetBytes(json);
+            request.ContentType = "application/x-www-form-urlencoded";
+            request.ContentLength = byteArray.Length;
+            using var reqStream = request.GetRequestStream();
+            reqStream.Write(byteArray, 0, byteArray.Length);
+            using var response = request.GetResponse();
+            using var respStream = response.GetResponseStream();
+            using var reader = new StreamReader(respStream);
+            string data = reader.ReadToEnd();
+            return data;
         }
     }
     
@@ -236,9 +212,9 @@ namespace Sync365
                 TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.ToString());
                 O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
                 ThisApplication.SaveContextObjects();
-                String FilesString = "";
                 foreach (jRemark remark in jsonobject.Remarks)
                 {
+                    String FilesString = "";
                     TDMSObject O_DocClaim = O_ClaimRegistry.Objects.Create("O_DocClaim");
                     O_DocClaim.Attributes["A_Str_Designation"].Value = remark.ATTR_Remark_Num;
                     O_DocClaim.Attributes["A_Str_ClaimDesc"].Value = remark.ATTR_Remark;
@@ -267,29 +243,10 @@ namespace Sync365
             }
             catch (Exception ex)
             {
-                Logger.Error(ex.Message + "\n" + ex.StackTrace);
                 response = ex.Message + "\n" + ex.StackTrace;
+                Logger.Error(response);
             }
-
-            //TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
-            //TDMSAttributes Attrs = O_Package_Unload.Attributes;
-            //if (jsonobject.Completed)
-            //{
-            //    Attrs["A_Bool_Load"].Value = true;
-            //    Attrs["A_Str_GUID_External"].Value = jsonobject.FolderGuid;
-            //    Attrs["A_Date_Load"].Value = DateTime.Now;
-            //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_OnReview"];
-            //}
-            //else
-            //{
-            //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_Cancel"];
-            //}
-            //O_Package_Unload.Attributes["A_Bool_Load"].Value = true;
-            //string taskText = jsonobject.task.ToString().ToLower();
-            //var req = this.Request;
-
             ThisApplication.SaveContextObjects();
-
             return response;
         }
     }
