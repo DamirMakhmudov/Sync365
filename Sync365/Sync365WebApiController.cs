@@ -45,7 +45,6 @@ namespace Sync365
                 foreach (TDMSObject O_ClaimRegistry in qO_ClaimRegistry.Objects)
                 {
                     Logger.Info("Done");
-
                     O_ClaimRegistry.Attributes["A_Bool_Started"].Value = true;
                 }
 
@@ -114,7 +113,7 @@ namespace Sync365
 
         public string sendR(string json)
         {
-            var url = "http://192.168.16.208:444/api/GPPimportRZstatus";
+            var url = ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus";
             var request = WebRequest.Create(url);
             request.Method = "POST";
             byte[] byteArray = Encoding.UTF8.GetBytes(json);
