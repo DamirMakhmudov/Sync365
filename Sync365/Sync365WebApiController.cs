@@ -89,7 +89,17 @@ namespace Sync365
                         var data = sendR(json);
                         Logger.Info(data);
                         ThisApplication.SaveChanges();
-                    }catch(Exception ex)
+
+                        TDMSObject O_Package_Unload = O_ClaimRegistry.Parent;
+                        TDMSObject O_Project = O_Package_Unload.Attributes["A_Ref_Project"].Object;
+                        TDMSMessage Msg = ThisApplication.CreateMessage();
+                        Msg.Subject = $"Реестр замечаний: \"{O_Package_Unload.Description}\"";
+                        Msg.Body = $"Получен реестр замечаний \"{O_ClaimRegistry.Description}\" по следующему пакету загрузки \"{O_Package_Unload.Description}\"";
+                        Msg.ToAdd(O_Package_Unload.Attributes["A_User_Author"].User);
+                        Msg.System = false;
+                        Msg.Send();
+                    }
+                    catch(Exception ex)
                     {
                         ResponseJson rjsonobject = new ResponseJson();
                         rjsonobject.SystemName = systemname;
@@ -143,6 +153,102 @@ namespace Sync365
         {
             ThisApplication = application;
             Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+        }
+
+        /* Flow 0.1 */
+        [Route("api/GPPtransferProjectResponse"), HttpPost]
+        public string GPPtransferProjectResponse([FromBody] JsonObject jsonobjectO)
+        {
+            try
+            {
+                Logger.Info("GPPtransferProjectResponse: started");
+                jsonobject = jsonobjectO;
+
+                //TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
+                //TDMSAttributes Attrs = O_Package_Unload.Attributes;
+                //if (jsonobject.Completed)
+                //{
+                //    Attrs["A_Bool_Load"].Value = true;
+                //    Attrs["A_Str_GUID_External"].Value = jsonobject.FolderGuid;
+                //    Attrs["A_Date_Load"].Value = DateTime.Now;
+                //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_OnReview"];
+                //    Logger.Info("true");
+                //}
+                //else
+                //{
+                //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_Cancel"];
+                //    TDMSMessage Msg = ThisApplication.CreateMessage();
+                //    Msg.Subject = "Ошибка при импорте пакета \"" + O_Package_Unload.Description + "\"";
+                //    Msg.Body = jsonobject.Result.ToString();
+                //    Msg.ToAdd(ThisApplication.CurrentUser);
+                //    Msg.System = false;
+                //    Msg.Send();
+                //    Logger.Info("some error");
+                //}
+
+                //O_Package_Unload.Attributes["A_Bool_Load"].Value = true;
+                //string taskText = jsonobject.task.ToString().ToLower();
+                //var req = this.Request;
+
+                ThisApplication.SaveChanges();
+                ThisApplication.SaveContextObjects();
+                response = "true";
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex.Message + "\n" + ex.StackTrace);
+                response = ex.Message + "\n" + ex.StackTrace;
+            }
+            return response;
+        }
+
+        /* Flow 0.2 */
+        [Route("api/GPPtransferProjectResponse2"), HttpPost]
+        public string GPPtransferProjectResponse2([FromBody] JsonObject jsonobjectO)
+        {
+            try
+            {
+                Logger.Info("GPPtransferProjectResponse2: started");
+                jsonobject = jsonobjectO;
+
+                //TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
+                //TDMSAttributes Attrs = O_Package_Unload.Attributes;
+                //if (jsonobject.Completed)
+                //{
+                //    Attrs["A_Bool_Load"].Value = true;
+                //    Attrs["A_Str_GUID_External"].Value = jsonobject.FolderGuid;
+                //    Attrs["A_Date_Load"].Value = DateTime.Now;
+                //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_OnReview"];
+                //    Logger.Info("true");
+                //}
+                //else
+                //{
+                //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_Cancel"];
+                //    TDMSMessage Msg = ThisApplication.CreateMessage();
+                //    Msg.Subject = "Ошибка при импорте пакета \"" + O_Package_Unload.Description + "\"";
+                //    Msg.Body = jsonobject.Result.ToString();
+                //    Msg.ToAdd(ThisApplication.CurrentUser);
+                //    Msg.System = false;
+                //    Msg.Send();
+                //    Logger.Info("some error");
+                //}
+
+                //O_Package_Unload.Attributes["A_Bool_Load"].Value = true;
+                //string taskText = jsonobject.task.ToString().ToLower();
+                //var req = this.Request;
+
+                ThisApplication.SaveChanges();
+                ThisApplication.SaveContextObjects();
+                response = "true";
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex.Message + "\n" + ex.StackTrace);
+                response = ex.Message + "\n" + ex.StackTrace;
+            }
+            return response;
         }
 
         /* Flow 1.1 */
@@ -208,7 +314,7 @@ namespace Sync365
                 O_ClaimRegistry.Attributes["A_Dat_Req_Deadline"].Value = jsonobject.RZ.ATTR_REGYSTRY_COMPLETE_THE_STAGE_BEFORE;
                 O_ClaimRegistry.Attributes["A_Str_ClaimAuthor"].Value = jsonobject.RZ.ATTR_Registry_UserInitiated;
                 
-                TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.ToString());
+                TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.TD_External_Guid.ToString());
                 O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
                 ThisApplication.SaveContextObjects();
                 foreach (jRemark remark in jsonobject.Remarks)
