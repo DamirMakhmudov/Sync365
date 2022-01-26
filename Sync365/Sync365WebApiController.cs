@@ -81,8 +81,8 @@ namespace Sync365
                         rjsonobject.SystemName = systemname;
                         rjsonobject.Result = "true";
                         rjsonobject.Date = DateTime.Now.ToString();
-                        rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
-                        rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
+                        //rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
+                        //rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
                         rjsonobject.Completed = true;
                         var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
 
@@ -105,8 +105,8 @@ namespace Sync365
                         rjsonobject.SystemName = systemname;
                         rjsonobject.Result = ex.Message + "\n" + ex.StackTrace;
                         rjsonobject.Date = DateTime.Now.ToString();
-                        rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
-                        rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
+                        //rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
+                        //rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
                         rjsonobject.Completed = false;
                         var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
                         var data = sendR(json);
@@ -156,13 +156,14 @@ namespace Sync365
         }
 
         /* Flow 0.1 */
-        [Route("api/GPPtransferProjectResponse"), HttpPost]
-        public string GPPtransferProjectResponse([FromBody] JsonObject jsonobjectO)
+        [Route("api/GPPtransferProjectResponse"), HttpPost] 
+        public string GPPtransferProjectResponse([FromBody] ResponseJson jsonobjectO)
         {
             try
             {
                 Logger.Info("GPPtransferProjectResponse: started");
-                jsonobject = jsonobjectO;
+                //jsonobject = jsonobjectO;
+                Logger.Info(jsonobjectO.Completed.ToString());
 
                 //TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
                 //TDMSAttributes Attrs = O_Package_Unload.Attributes;
@@ -204,7 +205,7 @@ namespace Sync365
         }
 
         /* Flow 0.2 */
-        [Route("api/GPPtransferProjectResponse2"), HttpPost]
+        [Route("api/GPPtransferProjectLaunched"), HttpPost]
         public string GPPtransferProjectResponse2([FromBody] JsonObject jsonobjectO)
         {
             try

@@ -25,7 +25,7 @@ namespace Sync365
         public string text { get; set; }
         public List<jRemark> Remarks { get; set; }
         public jRZ RZ { get; set; }
-
+        //public ResponseJson RJ { get; set; }
     }
 
     public class jRZ
@@ -115,6 +115,7 @@ namespace Sync365
         /// </summary>
         public string ATTR_REGISTRY_FACT_DATE_OF_FINISH { get; set; }
     }
+
     public class jRemark
     {
         /// <summary>
@@ -182,38 +183,28 @@ namespace Sync365
         /// </summary>
         public string ATTR_Answer { get; set; }
 
-        /// <summary>
-        /// Àòðèáóò - Àâòîð îòâåòà
-        /// </summary>
         public string ATTR_AUTHOR_ANSWER { get; set; }
 
-        /// <summary>
-        /// Àòðèáóò - Äàòà îòâåòà
-        /// </summary>
         public string ATTR_Answer_Date { get; set; }
     }
 
     public class jFile
     {
-        /// <summary>
+        public string Name { get; set; }
+        public string Path { get; set; }
+             /// <summary>
         /// Èìÿ ôàéëà
         /// </summary>
-        public string Name { get; set; }
-
-        /// <summary>
-        /// Ïóòü ê ôàéëó
-        /// </summary>
-        public string Path { get; set; }
-
-        /// <summary>
-        /// Md5 õýø ôàéëà
-        /// </summary>
-        public string Hash { get; set; }
+   public string Hash { get; set; }
     }
 
     public class jStatus
     {
-        public string Description { get; set; }
+     
+        /// <summary>
+        /// Md5 õýø ôàéëà
+        /// </summary>
+   public string Description { get; set; }
 
         public string Sysname { get; set; }
 
@@ -233,33 +224,19 @@ namespace Sync365
 
     public class ResponseJson
     {
-        /// <summary>
-        /// Имя системы, отправляющей запрос
         public string SystemName { get; set; }
-
-        /// <summary>
-        /// Флаг - выполнена ли операция успешно
-        /// </summary>
         public bool Completed { get; set; }
-
-        /// <summary>
-        /// Подробности о выполнении операции (ошибки)
-        /// </summary>
         public string Result { get; set; }
-
-        /// <summary>
-        /// Дата и время завершения операции
-        /// </summary>
         public string Date { get; set; }
+        public string O_Package_Unload { get; set; }
+        public List<jObject> Objects { get; set; }
+    }
 
-        /// <summary>
-        /// Идентификатор объекта в системе, отправляющей запрос
-        /// </summary>
+    public class jObject
+    {
         public string ObjGuid { get; set; }
-
-        /// <summary>
-        /// Идентификатор объекта во внешней системе
-        /// </summary>
         public string ObjGuidExternal { get; set; }
+        public string ObjStatus { get; set; }
+        public string StatusModifyTime { get; set; }
     }
 }
