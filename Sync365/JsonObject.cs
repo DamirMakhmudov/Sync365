@@ -28,7 +28,6 @@ namespace Sync365
         //public ResponseJson RJ { get; set; }
     }
 
-
     public class jRemark
     {
         public string Description { get; set; }
@@ -48,8 +47,6 @@ namespace Sync365
         public string ATTR_Answer_Date { get; set; }
     }
 
-    
-
     public class jStatus
     {
         public string Description { get; set; }
@@ -58,5 +55,4 @@ namespace Sync365
         public string StatusModifyUser { get; set; }
     }
 
-    
 }

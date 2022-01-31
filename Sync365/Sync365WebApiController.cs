@@ -15,7 +15,7 @@ using System.Net.Http;
 
 namespace Sync365
 {
-    /* SCHEDULER */
+    /* SCHEDULER 2.1 */
     [TdmsApi("ShTask")]
     public class ShTask
     {
@@ -162,34 +162,23 @@ namespace Sync365
             try
             {
                 Logger.Info("GPPtransferProjectResponse: started");
-                //jsonobject = jsonobjectO;
-                Logger.Info(jsonobjectO.Completed.ToString());
+                String textmessage = "";
+                TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal); ;
+                if (jsonobjectO.Completed)
+                {
+                    if (jsonobjectO.Objects[0].ObjStatus == "STATUS_Prj_Created")
+                    {
+                        project.Attributes["A_Bool_Published_365"].Value = true;
+                        textmessage = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно доставлен";
+                    }
+                }
 
-                //TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
-                //TDMSAttributes Attrs = O_Package_Unload.Attributes;
-                //if (jsonobject.Completed)
-                //{
-                //    Attrs["A_Bool_Load"].Value = true;
-                //    Attrs["A_Str_GUID_External"].Value = jsonobject.FolderGuid;
-                //    Attrs["A_Date_Load"].Value = DateTime.Now;
-                //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_OnReview"];
-                //    Logger.Info("true");
-                //}
-                //else
-                //{
-                //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_Cancel"];
-                //    TDMSMessage Msg = ThisApplication.CreateMessage();
-                //    Msg.Subject = "Ошибка при импорте пакета \"" + O_Package_Unload.Description + "\"";
-                //    Msg.Body = jsonobject.Result.ToString();
-                //    Msg.ToAdd(ThisApplication.CurrentUser);
-                //    Msg.System = false;
-                //    Msg.Send();
-                //    Logger.Info("some error");
-                //}
-
-                //O_Package_Unload.Attributes["A_Bool_Load"].Value = true;
-                //string taskText = jsonobject.task.ToString().ToLower();
-                //var req = this.Request;
+                TDMSMessage Msg = ThisApplication.CreateMessage();
+                Msg.Subject = textmessage;
+                Msg.Body = textmessage;
+                Msg.ToAdd(project.Attributes["A_User_GIP"].User);
+                Msg.System = false;
+                Msg.Send();
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
@@ -206,38 +195,27 @@ namespace Sync365
 
         /* Flow 0.2 */
         [Route("api/GPPtransferProjectLaunched"), HttpPost]
-        public string GPPtransferProjectResponse2([FromBody] JsonObject jsonobjectO)
+        public string GPPtransferProjectLaunched([FromBody] ResponseJson jsonobjectO)
         {
             try
             {
-                Logger.Info("GPPtransferProjectResponse2: started");
-                jsonobject = jsonobjectO;
+                Logger.Info("GPPtransferProjectLaunched: started");
+                String textmessage = "";
+                TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
+                if (jsonobjectO.Completed)
+                {
+                    if (jsonobjectO.Objects[0].ObjStatus == "STATUS_Prj_InProgress")
+                    {
+                        textmessage = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно запущен";
+                    }
+                }
 
-                //TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
-                //TDMSAttributes Attrs = O_Package_Unload.Attributes;
-                //if (jsonobject.Completed)
-                //{
-                //    Attrs["A_Bool_Load"].Value = true;
-                //    Attrs["A_Str_GUID_External"].Value = jsonobject.FolderGuid;
-                //    Attrs["A_Date_Load"].Value = DateTime.Now;
-                //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_OnReview"];
-                //    Logger.Info("true");
-                //}
-                //else
-                //{
-                //    O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_Cancel"];
-                //    TDMSMessage Msg = ThisApplication.CreateMessage();
-                //    Msg.Subject = "Ошибка при импорте пакета \"" + O_Package_Unload.Description + "\"";
-                //    Msg.Body = jsonobject.Result.ToString();
-                //    Msg.ToAdd(ThisApplication.CurrentUser);
-                //    Msg.System = false;
-                //    Msg.Send();
-                //    Logger.Info("some error");
-                //}
-
-                //O_Package_Unload.Attributes["A_Bool_Load"].Value = true;
-                //string taskText = jsonobject.task.ToString().ToLower();
-                //var req = this.Request;
+                TDMSMessage Msg = ThisApplication.CreateMessage();
+                Msg.Subject = textmessage;
+                Msg.Body = textmessage;
+                Msg.ToAdd(project.Attributes["A_User_GIP"].User);
+                Msg.System = false;
+                Msg.Send();
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();

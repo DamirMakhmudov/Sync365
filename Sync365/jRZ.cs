@@ -26,6 +26,7 @@ namespace Sync365
         public string ATTR_Registry_UserFinished { get; set; }
         public string ATTR_REGISTRY_FACT_DATE_OF_FINISH { get; set; }
     }
+
     public class jFile
     {
         public string Name { get; set; }
