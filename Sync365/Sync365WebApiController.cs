@@ -31,9 +31,10 @@ namespace Sync365
         }
         public void Execute()
         {
+            var Functions = new Functions();
             try
             {
-                Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+                //Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
                 Logger.Info("2.1 started");
 
                 TDMSQuery qO_ClaimRegistry = ThisApplication.CreateQuery();
@@ -51,14 +52,11 @@ namespace Sync365
                 {
                     try
                     {
-                        Logger.Info(O_ClaimRegistry.Description);
                         TDMSQuery qO_DocClaim = ThisApplication.CreateQuery();
                         qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionObjectDef, "O_DocClaim");
                         qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, O_ClaimRegistry, "A_Ref_Parent");
                         qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "= Null or =''", "A_Bool_Started");
                         qO_DocClaim.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "<> ''", "A_Str_Files");
-
-                        Logger.Info("O_DocClaim: " + qO_DocClaim.Objects.Count.ToString());
 
                         foreach (TDMSObject O_DocClaim in qO_DocClaim.Objects)
                         {
@@ -79,23 +77,18 @@ namespace Sync365
                         rjsonobject.SystemName = systemname;
                         rjsonobject.Result = "true";
                         rjsonobject.Date = DateTime.Now.ToString();
-                        //rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
-                        //rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
                         rjsonobject.Completed = true;
+                        
+                        jObject rObject = new jObject();
+                        rObject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
+                        rObject.ObjGuid = O_ClaimRegistry.GUID;
+                        rjsonobject.Objects.Add(rObject);
                         var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
-
-                        var data = sendR(json);
-                        Logger.Info(data);
-                        ThisApplication.SaveChanges();
-
+                        var data = Functions.SendRequestPOST(json, ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus");
                         TDMSObject O_Package_Unload = O_ClaimRegistry.Parent;
                         TDMSObject O_Project = O_Package_Unload.Attributes["A_Ref_Project"].Object;
-                        TDMSMessage Msg = ThisApplication.CreateMessage();
-                        Msg.Subject = $"Реестр замечаний: \"{O_Package_Unload.Description}\"";
-                        Msg.Body = $"Получен реестр замечаний \"{O_ClaimRegistry.Description}\" по следующему пакету загрузки \"{O_Package_Unload.Description}\"";
-                        Msg.ToAdd(O_Package_Unload.Attributes["A_User_Author"].User);
-                        Msg.System = false;
-                        Msg.Send();
+                        ThisApplication.SaveChanges();
+                        Functions.SendTDMSMessage($"Реестр замечаний: \"{O_Package_Unload.Description}\"", $"Получен реестр замечаний \"{O_ClaimRegistry.Description}\" по следующему пакету загрузки \"{O_Package_Unload.Description}\"", O_Package_Unload.Attributes["A_User_Author"].User);
                     }
                     catch(Exception ex)
                     {
@@ -103,11 +96,9 @@ namespace Sync365
                         rjsonobject.SystemName = systemname;
                         rjsonobject.Result = ex.Message + "\n" + ex.StackTrace;
                         rjsonobject.Date = DateTime.Now.ToString();
-                        //rjsonobject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
-                        //rjsonobject.ObjGuid = O_ClaimRegistry.GUID;
                         rjsonobject.Completed = false;
                         var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
-                        var data = sendR(json);
+                        var data = Functions.SendRequestPOST(json, ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus");
                         Logger.Error(data);
                     }
                 }
@@ -118,25 +109,8 @@ namespace Sync365
                 Logger.Error(response);
             }
         }
-
-        public string sendR(string json)
-        {
-            var url = ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus";
-            var request = WebRequest.Create(url);
-            request.Method = "POST";
-            byte[] byteArray = Encoding.UTF8.GetBytes(json);
-            request.ContentType = "application/x-www-form-urlencoded";
-            request.ContentLength = byteArray.Length;
-            using var reqStream = request.GetRequestStream();
-            reqStream.Write(byteArray, 0, byteArray.Length);
-            using var response = request.GetResponse();
-            using var respStream = response.GetResponseStream();
-            using var reader = new StreamReader(respStream);
-            string data = reader.ReadToEnd();
-            return data;
-        }
     }
-    
+
     /* REST */
     public class Sync365WebApiController : ControllerBase
     {
@@ -157,36 +131,33 @@ namespace Sync365
         [Route("api/GPPtransferProjectResponse"), HttpPost] 
         public string GPPtransferProjectResponse([FromBody] ResponseJson jsonobjectO)
         {
+            var Functions = new Functions();
             try
             {
                 Logger.Info("GPPtransferProjectResponse: started");
-                String textmessage = "";
+                String mBody = "";
                 TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal); ;
                 if (jsonobjectO.Completed)
                 {
                     if (jsonobjectO.Objects[0].ObjStatus == "STATUS_Prj_Created")
                     {
                         project.Attributes["A_Bool_Published_365"].Value = true;
-                        textmessage = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно доставлен";
+                        mBody= $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно доставлен";
                     }
                 }
-
-                TDMSMessage Msg = ThisApplication.CreateMessage();
-                Msg.Subject = textmessage;
-                Msg.Body = textmessage;
-                Msg.ToAdd(project.Attributes["A_User_GIP"].User);
-                Msg.System = false;
-                Msg.Send();
+                Functions.SendTDMSMessage(mBody, mBody, project.Attributes["A_User_GIP"].User);
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
                 response = "true";
+                Logger.Info("GPPtransferProjectResponse: finished successful");
                 return response;
             }
             catch (Exception ex)
             {
                 Logger.Error(ex.Message + "\n" + ex.StackTrace);
                 response = ex.Message + "\n" + ex.StackTrace;
+                Functions.SendTDMSMessage("Ошибка", response, ThisApplication.Users["SYSADMIN"]);
             }
             return response;
         }
@@ -281,7 +252,6 @@ namespace Sync365
             try
             {
                 Logger.Info("GPPgetClaimRegistry: started");
-                //jsonobject = jsonobjectO;
                 TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
 
                 TDMSObject O_ClaimRegistry = O_Package_Unload.Objects.Create("O_ClaimRegistry");
@@ -292,10 +262,10 @@ namespace Sync365
                 O_ClaimRegistry.Attributes["A_Dat_Req_Deadline"].Value = jsonobject.RZ.ATTR_REGYSTRY_COMPLETE_THE_STAGE_BEFORE;
                 jUser UserInitiated = jsonobject.RZ.ATTR_Registry_UserInitiated;
                 O_ClaimRegistry.Attributes["A_Str_ClaimAuthor"].Value = $"{UserInitiated.LastName} {UserInitiated.FirstName} {UserInitiated.MiddleName}, {UserInitiated.Tel}, {UserInitiated.Mail}";
-                
                 TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.TD_External_Guid.ToString());
                 O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
                 ThisApplication.SaveContextObjects();
+
                 foreach (jRemark remark in jsonobject.Remarks)
                 {
                     String FilesString = "";
@@ -326,6 +296,7 @@ namespace Sync365
                         //ThisApplication.SaveContextObjects();
                     }
                     O_DocClaim.Attributes["A_Str_Files"].Value = FilesString;
+                    ThisApplication.SaveContextObjects();
                 }
 
                 response = "true";
