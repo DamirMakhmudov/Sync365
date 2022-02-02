@@ -34,17 +34,16 @@ namespace Sync365
             try
             {
                 Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
-                Logger.Info("Execute started");
+                Logger.Info("2.1 started");
 
                 TDMSQuery qO_ClaimRegistry = ThisApplication.CreateQuery();
                 qO_ClaimRegistry.AddCondition(TDMSQueryConditionType.tdmQueryConditionObjectDef, "O_ClaimRegistry");
                 qO_ClaimRegistry.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "= Null or =''", "A_Bool_Started");
 
-                Logger.Info("_ClaimRegistry conunt: " + qO_ClaimRegistry.Objects.Count.ToString());
+                Logger.Info("ClaimRegistry count: " + qO_ClaimRegistry.Objects.Count.ToString());
 
                 foreach (TDMSObject O_ClaimRegistry in qO_ClaimRegistry.Objects)
                 {
-                    Logger.Info("Done");
                     O_ClaimRegistry.Attributes["A_Bool_Started"].Value = true;
                 }
 
@@ -72,7 +71,6 @@ namespace Sync365
                                 if (word != "")
                                 {
                                     TDMSFile newFile = O_DocClaim.Files.Create("FILE_ALL", word);
-                                    //    //ThisApplication.SaveContextObjects();
                                 }
                             }
                         }
@@ -155,7 +153,7 @@ namespace Sync365
             Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
         }
 
-        /* Flow 0.1 */
+        /* Flow 0.1 PROJECT */
         [Route("api/GPPtransferProjectResponse"), HttpPost] 
         public string GPPtransferProjectResponse([FromBody] ResponseJson jsonobjectO)
         {
@@ -193,7 +191,7 @@ namespace Sync365
             return response;
         }
 
-        /* Flow 0.2 */
+        /* Flow 0.2 PROJECT */
         [Route("api/GPPtransferProjectLaunched"), HttpPost]
         public string GPPtransferProjectLaunched([FromBody] ResponseJson jsonobjectO)
         {
@@ -230,20 +228,19 @@ namespace Sync365
             return response;
         }
 
-        /* Flow 1.1 */
+        /* Flow 1.1 PERDOC */
         [Route("api/GPPtransferDocResponse"), HttpPost]
-        public string GPPtransferDocResponse([FromBody] JsonObject jsonobjectO)
+        public string GPPtransferDocResponse([FromBody] ResponseJson jsonobject)
         {
             try
             {
                 Logger.Info("GPPtransferDocResponse: started");
-                jsonobject = jsonobjectO;
+                Logger.Info(jsonobject.O_Package_Unload.ToString());
                 TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
                 TDMSAttributes Attrs = O_Package_Unload.Attributes;
                 if (jsonobject.Completed)
                 {
                     Attrs["A_Bool_Load"].Value = true;
-                    Attrs["A_Str_GUID_External"].Value = jsonobject.FolderGuid;
                     Attrs["A_Date_Load"].Value = DateTime.Now;
                     O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_OnReview"];
                     Logger.Info("true");
@@ -259,9 +256,11 @@ namespace Sync365
                     Msg.Send();
                     Logger.Info("some error");
                 }
+
                 //O_Package_Unload.Attributes["A_Bool_Load"].Value = true;
                 //string taskText = jsonobject.task.ToString().ToLower();
                 //var req = this.Request;
+
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
                 response = "true";
@@ -275,14 +274,14 @@ namespace Sync365
             return response;
         }
 
-        /* Flow 2 */
+        /* Flow 2 RZ */
         [Route("api/GPPgetClaimRegistry"), HttpPost]
-        public String GPPgetClaimRegistry([FromBody] JsonObject jsonobjectO)
+        public String GPPgetClaimRegistry([FromBody] JsonPackageRZ jsonobject)
         {
             try
             {
                 Logger.Info("GPPgetClaimRegistry: started");
-                jsonobject = jsonobjectO;
+                //jsonobject = jsonobjectO;
                 TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
 
                 TDMSObject O_ClaimRegistry = O_Package_Unload.Objects.Create("O_ClaimRegistry");
@@ -291,7 +290,8 @@ namespace Sync365
                 O_ClaimRegistry.Attributes["A_Date_Create"].Value = DateTime.Parse(jsonobject.RZ.ATTR_REGYSTRY_CREATION_DATE);
                 O_ClaimRegistry.Attributes["A_Str_Designation"].Value = jsonobject.RZ.ATTR_Registry_Num;
                 O_ClaimRegistry.Attributes["A_Dat_Req_Deadline"].Value = jsonobject.RZ.ATTR_REGYSTRY_COMPLETE_THE_STAGE_BEFORE;
-                O_ClaimRegistry.Attributes["A_Str_ClaimAuthor"].Value = jsonobject.RZ.ATTR_Registry_UserInitiated;
+                jUser UserInitiated = jsonobject.RZ.ATTR_Registry_UserInitiated;
+                O_ClaimRegistry.Attributes["A_Str_ClaimAuthor"].Value = $"{UserInitiated.LastName} {UserInitiated.FirstName} {UserInitiated.MiddleName}, {UserInitiated.Tel}, {UserInitiated.Mail}";
                 
                 TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.TD_External_Guid.ToString());
                 O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
@@ -306,8 +306,13 @@ namespace Sync365
                     O_DocClaim.Attributes["A_Str_Answer"].Value = remark.ATTR_Answer_Type;
                     O_DocClaim.Attributes["A_Int_DocVersion"].Value = remark.ATTR_TechDoc_Version;
                     O_DocClaim.Attributes["A_Str_GUID_External"].Value = remark.Guid;
-                    O_DocClaim.Attributes["A_Str_ClaimAuthor"].Value = remark.ATTR_AUTHOR_ZM;
-                    O_DocClaim.Attributes["A_User_AnswerAuthor"].Value = remark.ATTR_AUTHOR_ANSWER;
+
+                    jUser authorZM = remark.ATTR_AUTHOR_ZM;
+                    O_DocClaim.Attributes["A_Str_ClaimAuthor"].Value = $"{authorZM.LastName} {authorZM.FirstName} {authorZM.MiddleName}, {authorZM.Tel}, {authorZM.Mail}";
+
+                    //jUser authorAnswer = remark.ATTR_AUTHOR_ANSWER;
+                    //O_DocClaim.Attributes["A_User_AnswerAuthor"].Value = $"{authorAnswer.LastName} {authorAnswer.FirstName} {authorAnswer.MiddleName}, {authorAnswer.Tel}, {authorAnswer.Mail}";
+
                     O_DocClaim.Attributes["A_Date_Answer"].Value = remark.ATTR_Answer_Date;
                     O_DocClaim.Attributes["A_Date_Create"].Value = remark.ATTR_Remark_Date;
                     O_DocClaim.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
