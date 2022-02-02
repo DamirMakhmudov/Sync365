@@ -29,7 +29,6 @@ namespace Sync365
             Msg.Subject = mSubject;
             Msg.Body = mBody;
             Msg.ToAdd(mTo);
-            Msg.System = false;
             Msg.Send();
         }
 

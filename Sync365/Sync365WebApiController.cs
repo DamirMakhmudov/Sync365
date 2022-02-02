@@ -36,7 +36,6 @@ namespace Sync365
             {
                 //Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
                 Logger.Info("2.1 started");
-
                 TDMSQuery qO_ClaimRegistry = ThisApplication.CreateQuery();
                 qO_ClaimRegistry.AddCondition(TDMSQueryConditionType.tdmQueryConditionObjectDef, "O_ClaimRegistry");
                 qO_ClaimRegistry.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "= Null or =''", "A_Bool_Started");
@@ -45,6 +44,7 @@ namespace Sync365
 
                 foreach (TDMSObject O_ClaimRegistry in qO_ClaimRegistry.Objects)
                 {
+                    Logger.Info(O_ClaimRegistry.Description);
                     O_ClaimRegistry.Attributes["A_Bool_Started"].Value = true;
                 }
 
