@@ -12,9 +12,55 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Timers;
 using System.Net.Http;
+using System.Collections.Generic;
 
 namespace Sync365
 {
+    public class Functions
+    {
+        public TDMSApplication ThisApplication;
+        public ILogger Logger { get; set; }
+        public TDMSObject thisobject;
+        public JsonObject jsonobject;
+        public string response;
+
+        public Functions(TDMSApplication application)
+        {
+            ThisApplication = application;
+            Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
+        }
+
+        /* SEND TDMS MESSAGE */
+        public bool SendTDMSMessage(String mSubject, String mBody, TDMSUser mTo)
+        {
+            //Logger.Info(ThisApplication.DatabaseName.ToString());
+            TDMSMessage Msg = ThisApplication.CreateMessage();
+            Msg.Subject = mSubject;
+            Msg.Body = mBody;
+            Msg.ToAdd(mTo);
+            Msg.Send();
+            return true;
+        }
+
+        /* SEND POST REQUEST WITH JSON */
+        public string SendRequestPOST(string json, string url)
+        {
+            //var url = ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus";
+            var request = WebRequest.Create(url);
+            request.Method = "POST";
+            byte[] byteArray = Encoding.UTF8.GetBytes(json);
+            request.ContentType = "application/x-www-form-urlencoded";
+            request.ContentLength = byteArray.Length;
+            using var reqStream = request.GetRequestStream();
+            reqStream.Write(byteArray, 0, byteArray.Length);
+            using var response = request.GetResponse();
+            using var respStream = response.GetResponseStream();
+            using var reader = new StreamReader(respStream);
+            string data = reader.ReadToEnd();
+            return data;
+        }
+    }
+
     /* SCHEDULER 2.1 */
     [TdmsApi("ShTask")]
     public class ShTask
@@ -31,7 +77,7 @@ namespace Sync365
         }
         public void Execute()
         {
-            var Functions = new Functions();
+            var Functions = new Functions(ThisApplication);
             try
             {
                 //Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
@@ -78,11 +124,13 @@ namespace Sync365
                         rjsonobject.Result = "true";
                         rjsonobject.Date = DateTime.Now.ToString();
                         rjsonobject.Completed = true;
-                        
+                        rjsonobject.Objects = new List<jObject>();
+
                         jObject rObject = new jObject();
                         rObject.ObjGuidExternal = O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value.ToString();
                         rObject.ObjGuid = O_ClaimRegistry.GUID;
                         rjsonobject.Objects.Add(rObject);
+
                         var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
                         var data = Functions.SendRequestPOST(json, ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus");
                         TDMSObject O_Package_Unload = O_ClaimRegistry.Parent;
@@ -102,11 +150,12 @@ namespace Sync365
                         Logger.Error(data);
                     }
                 }
+                Logger.Info("2.1 finished");
             }
             catch (Exception ex)
             {
                 response = ex.Message + "\n" + ex.StackTrace;
-                Logger.Error(response);
+                Logger.Error($"2.1 finished with: {response}");
             }
         }
     }
@@ -131,7 +180,7 @@ namespace Sync365
         [Route("api/GPPtransferProjectResponse"), HttpPost] 
         public string GPPtransferProjectResponse([FromBody] ResponseJson jsonobjectO)
         {
-            var Functions = new Functions();
+            var Functions = new Functions(ThisApplication);
             try
             {
                 Logger.Info("GPPtransferProjectResponse: started");
@@ -142,24 +191,25 @@ namespace Sync365
                     if (jsonobjectO.Objects[0].ObjStatus == "STATUS_Prj_Created")
                     {
                         project.Attributes["A_Bool_Published_365"].Value = true;
-                        mBody= $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно доставлен";
+                        mBody = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно доставлен";
                     }
                 }
+                Logger.Info(ThisApplication.CurrentUser.Description);
+                //Functions.SendTDMSMessage("mBody", "mBody", ThisApplication.CurrentUser);
                 Functions.SendTDMSMessage(mBody, mBody, project.Attributes["A_User_GIP"].User);
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
                 response = "true";
-                Logger.Info("GPPtransferProjectResponse: finished successful");
+                Logger.Info("GPPtransferProjectResponse: finished");
                 return response;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex.Message + "\n" + ex.StackTrace);
                 response = ex.Message + "\n" + ex.StackTrace;
-                Functions.SendTDMSMessage("Ошибка", response, ThisApplication.Users["SYSADMIN"]);
+                Logger.Info($"GPPtransferProjectResponse: finished with: {response}");
+                return response;
             }
-            return response;
         }
 
         /* Flow 0.2 PROJECT */
@@ -179,12 +229,8 @@ namespace Sync365
                     }
                 }
 
-                TDMSMessage Msg = ThisApplication.CreateMessage();
-                Msg.Subject = textmessage;
-                Msg.Body = textmessage;
-                Msg.ToAdd(project.Attributes["A_User_GIP"].User);
-                Msg.System = false;
-                Msg.Send();
+                var Functions = new Functions(ThisApplication);
+                Functions.SendTDMSMessage(textmessage, textmessage, project.Attributes["A_User_GIP"].User);
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
@@ -193,10 +239,10 @@ namespace Sync365
             }
             catch (Exception ex)
             {
-                Logger.Error(ex.Message + "\n" + ex.StackTrace);
                 response = ex.Message + "\n" + ex.StackTrace;
+                Logger.Info($"GPPtransferProjectLaunched: finished with: {response}");
+                return response;
             }
-            return response;
         }
 
         /* Flow 1.1 PERDOC */
@@ -206,7 +252,6 @@ namespace Sync365
             try
             {
                 Logger.Info("GPPtransferDocResponse: started");
-                Logger.Info(jsonobject.O_Package_Unload.ToString());
                 TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
                 TDMSAttributes Attrs = O_Package_Unload.Attributes;
                 if (jsonobject.Completed)
@@ -228,21 +273,18 @@ namespace Sync365
                     Logger.Info("some error");
                 }
 
-                //O_Package_Unload.Attributes["A_Bool_Load"].Value = true;
-                //string taskText = jsonobject.task.ToString().ToLower();
-                //var req = this.Request;
-
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
                 response = "true";
+                Logger.Info("GPPtransferDocResponse: finished");
                 return response;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex.Message + "\n" + ex.StackTrace);
                 response = ex.Message + "\n" + ex.StackTrace;
+                Logger.Info($"GPPtransferDocResponse: finished with: {response}");
+                return response;
             }
-            return response;
         }
 
         /* Flow 2 RZ */
@@ -298,17 +340,58 @@ namespace Sync365
                     O_DocClaim.Attributes["A_Str_Files"].Value = FilesString;
                     ThisApplication.SaveContextObjects();
                 }
-
+                Logger.Info("GPPgetClaimRegistry: finished");
                 response = "true";
+                return response;
             }
             catch (Exception ex)
             {
                 response = ex.Message + "\n" + ex.StackTrace;
-                Logger.Error(response);
+                Logger.Info($"GPPgetClaimRegistry: finished with: {response}");
+                return response;
             }
-            ThisApplication.SaveContextObjects();
+        }
+
+        /* Flow 4 STATUS PROJECT */
+        [Route("api/ObjectsStatusChange"), HttpPost]
+        public string ObjectsStatusChange([FromBody] ResponseJson jsonobjectO)
+        {
+            try
+            {
+                Logger.Info("ObjectsStatusChange: started");
+                String textmessage = "";
+                TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
+                if (jsonobjectO.Completed)
+                {
+                    if (jsonobjectO.Objects[0].ObjStatus == "STATUS_Prj_InProgress")
+                    {
+                        textmessage = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно запущен";
+                    }
+                }
+
+                var Functions = new Functions(ThisApplication);
+                Functions.SendTDMSMessage(textmessage, textmessage, project.Attributes["A_User_GIP"].User);
+
+                //TDMSMessage Msg = ThisApplication.CreateMessage();
+                //Msg.Subject = textmessage;
+                //Msg.Body = textmessage;
+                //Msg.ToAdd(project.Attributes["A_User_GIP"].User);
+                //Msg.System = false;
+                //Msg.Send();
+
+                ThisApplication.SaveChanges();
+                ThisApplication.SaveContextObjects();
+                response = "true";
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex.Message + "\n" + ex.StackTrace);
+                response = ex.Message + "\n" + ex.StackTrace;
+            }
             return response;
         }
+        //4 поток - api/ObjectsStatusChange метод POST
     }
 }
 

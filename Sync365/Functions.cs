@@ -15,7 +15,7 @@ using System.Net.Http;
 
 namespace Sync365
 {
-    public class Functions
+    public class Functionso
     {
         public TDMSApplication ThisApplication;
         public ILogger Logger { get; set; }
