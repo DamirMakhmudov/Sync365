@@ -194,8 +194,6 @@ namespace Sync365
                         mBody = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно доставлен";
                     }
                 }
-                Logger.Info(ThisApplication.CurrentUser.Description);
-                //Functions.SendTDMSMessage("mBody", "mBody", ThisApplication.CurrentUser);
                 Functions.SendTDMSMessage(mBody, mBody, project.Attributes["A_User_GIP"].User);
 
                 ThisApplication.SaveChanges();
@@ -352,13 +350,13 @@ namespace Sync365
             }
         }
 
-        /* Flow 4 STATUS PROJECT */
-        [Route("api/ObjectsStatusChange"), HttpPost]
-        public string ObjectsStatusChange([FromBody] ResponseJson jsonobjectO)
+        /* Flow 3 STATUS DOC OR RZ*/
+        [Route("api/GPPgetDocRZstatus"), HttpPost]
+        public string GPPgetDocRZstatus([FromBody] ResponseJson jsonobjectO)
         {
             try
             {
-                Logger.Info("ObjectsStatusChange: started");
+                Logger.Info("GPPgetDocRZstatus: started");
                 String textmessage = "";
                 TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
                 if (jsonobjectO.Completed)
@@ -372,12 +370,43 @@ namespace Sync365
                 var Functions = new Functions(ThisApplication);
                 Functions.SendTDMSMessage(textmessage, textmessage, project.Attributes["A_User_GIP"].User);
 
-                //TDMSMessage Msg = ThisApplication.CreateMessage();
-                //Msg.Subject = textmessage;
-                //Msg.Body = textmessage;
-                //Msg.ToAdd(project.Attributes["A_User_GIP"].User);
-                //Msg.System = false;
-                //Msg.Send();
+                ThisApplication.SaveChanges();
+                ThisApplication.SaveContextObjects();
+                response = "true";
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex.Message + "\n" + ex.StackTrace);
+                response = ex.Message + "\n" + ex.StackTrace;
+            }
+            return response;
+        }
+
+        /* Flow 4 STATUS CHANGE */
+        [Route("api/ObjectsStatusChange"), HttpPost]
+        public string ObjectsStatusChange([FromBody] ResponseJson jsonobjectO)
+        {
+            try
+            {
+                Logger.Info("ObjectsStatusChange: started");
+                String textmessage = "";
+                var objects = jsonobjectO.Objects;
+                foreach (jObject obj in objects) {
+                    Logger.Info(obj.ObjGuid);
+                }
+
+                //TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
+                //if (jsonobjectO.Completed)
+                //{
+                //    if (jsonobjectO.Objects[0].ObjStatus == "STATUS_Prj_InProgress")
+                //    {
+                //        textmessage = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно запущен";
+                //    }
+                //}
+
+                //var Functions = new Functions(ThisApplication);
+                //Functions.SendTDMSMessage(textmessage, textmessage, project.Attributes["A_User_GIP"].User);
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
