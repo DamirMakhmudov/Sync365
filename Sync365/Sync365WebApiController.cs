@@ -233,6 +233,7 @@ namespace Sync365
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
                 response = "true";
+                Logger.Info("GPPtransferProjectLaunched: finished");
                 return response;
             }
             catch (Exception ex)
@@ -304,6 +305,10 @@ namespace Sync365
                 O_ClaimRegistry.Attributes["A_Str_ClaimAuthor"].Value = $"{UserInitiated.LastName} {UserInitiated.FirstName} {UserInitiated.MiddleName}, {UserInitiated.Tel}, {UserInitiated.Mail}";
                 TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.TD_External_Guid.ToString());
                 O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
+                TDMSUser mUser = O_Document.Attributes["A_User_Author"].User;
+                O_ClaimRegistry.Attributes["A_User_Author"].Value = mUser;
+                O_ClaimRegistry.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], mUser);
+
                 ThisApplication.SaveContextObjects();
 
                 foreach (jRemark remark in jsonobject.Remarks)
@@ -327,7 +332,9 @@ namespace Sync365
                     O_DocClaim.Attributes["A_Date_Create"].Value = remark.ATTR_Remark_Date;
                     O_DocClaim.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
                     O_DocClaim.Attributes["A_Ref_DocClaimRegistry"].Value = O_ClaimRegistry;
-                    
+                    O_DocClaim.Attributes["A_User_Author"].Value = mUser;
+                    O_DocClaim.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], mUser);
+
                     foreach (jFile file in remark.Files)
                     {
                         //string tdmsWordFilePath = System.IO.Path.Combine(file.Path);
@@ -390,12 +397,115 @@ namespace Sync365
             try
             {
                 Logger.Info("ObjectsStatusChange: started");
-                String textmessage = "";
+                var Functions = new Functions(ThisApplication);
                 var objects = jsonobjectO.Objects;
-                foreach (jObject obj in objects) {
-                    Logger.Info(obj.ObjGuid);
-                }
+                String response = "true";
 
+                foreach (jObject jObj in objects) {
+                    TDMSObject tdmsObject = ThisApplication.GetObjectByGUID(jObj.ObjGuidExternal);
+                    if( tdmsObject != null)
+                    {
+                        switch (jObj.ObjStatus)
+                        {
+                            case "STATUS_TechDoc_InUse":
+                                /* Всем РЗ и ЗМ ставим статус "Не актуально" */
+                                TDMSObjects RZs = tdmsObject.ReferencedBy.ObjectsByDef("O_ClaimRegistry");
+                                foreach (TDMSObject O_ClaimRegistry in RZs)
+                                {
+                                    O_ClaimRegistry.Status = ThisApplication.Statuses["S_ClaimRegistry_NotActual"];
+                                    foreach (TDMSObject O_DocClaim in O_ClaimRegistry.Objects)
+                                    {
+                                        O_DocClaim.Status = ThisApplication.Statuses["S_DocClaim_NotActual"];
+                                    }
+                                }
+
+                                /* Находим Пакет выгрузки связанный с этим Доком*/
+                                TDMSObject O_Package_Unload = tdmsObject.Attributes["A_Ref_Package_Unload"].Object;
+
+                                /* В табличном атрибуте мменяем статус напротив Дока */
+                                TDMSTableAttribute Rows = O_Package_Unload.Attributes["A_Table_DocReview"].Rows;
+                                foreach (TDMSTableAttributeRow row in Rows)
+                                {
+                                    TDMSObject rowObject = row.Attributes["A_Ref_Doc"].Object;
+                                    if (rowObject.InternalObject.ObjectGuid == tdmsObject.InternalObject.ObjectGuid)
+                                    {
+                                        row.Attributes["A_Cls_DocReviewStatus"].Value = ThisApplication.Classifiers["N_DocReview_Status"].Classifiers["N_DocReview_Status_Actual"];
+                                        break;
+                                    }
+                                }
+                                ThisApplication.SaveChanges();
+                                ClosePackageUnload(O_Package_Unload);
+                                TDMSUser tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
+                                String text = $"Документ \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" введен в действие";
+                                Functions.SendTDMSMessage(text, text, tdmsUser);
+                                //response = "true";
+                                break;
+
+                            case "STATUS_TechDoc_Annulated":
+                                /* Всем РЗ и ЗМ ставим статус "Не актуально" */
+                                RZs = tdmsObject.ReferencedBy.ObjectsByDef("O_ClaimRegistry");
+                                foreach (TDMSObject O_ClaimRegistry in RZs)
+                                {
+                                    O_ClaimRegistry.Status = ThisApplication.Statuses["S_ClaimRegistry_NotActual"];
+                                    foreach (TDMSObject O_DocClaim in O_ClaimRegistry.Objects)
+                                    {
+                                        O_DocClaim.Status = ThisApplication.Statuses["S_DocClaim_NotActual"];
+                                    }
+                                }
+
+                                /* Находим Пакет выгрузки связанный с этим Доком*/
+                                O_Package_Unload = tdmsObject.Attributes["A_Ref_Package_Unload"].Object;
+
+                                /* В табличном атрибуте мменяем статус напротив Дока */
+                                Rows = O_Package_Unload.Attributes["A_Table_DocReview"].Rows;
+                                foreach (TDMSTableAttributeRow row in Rows)
+                                {
+                                    TDMSObject rowObject = row.Attributes["A_Ref_Doc"].Object;
+                                    if (rowObject.InternalObject.ObjectGuid == tdmsObject.InternalObject.ObjectGuid)
+                                    {
+                                        row.Attributes["A_Cls_DocReviewStatus"].Value = ThisApplication.Classifiers["N_DocReview_Status"].Classifiers["N_DocReview_Status_Annul"];
+                                        break;
+                                    }
+                                }
+                                ThisApplication.SaveChanges();
+                                ClosePackageUnload(O_Package_Unload);
+                                tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
+                                text = $"Документ \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" аннулирован";
+                                Functions.SendTDMSMessage(text, text, tdmsUser);
+                                response = "true";
+                                break;
+
+                            case "STATUS_REVIEW_COMPLETED":
+                                /* Всем РЗ и ЗМ ставим статус "Не актуально" */
+                                tdmsObject.Status = ThisApplication.Statuses["S_ClaimRegistry_NotActual"];
+                                foreach (TDMSObject O_DocClaim in tdmsObject.Objects)
+                                {
+                                    O_DocClaim.Status = ThisApplication.Statuses["S_DocClaim_NotActual"];
+                                }
+                                ThisApplication.SaveChanges();
+                                tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
+                                text = $"Реестр замечаний \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" закрыт";
+                                Functions.SendTDMSMessage(text, text, tdmsUser);
+                                //response = "true";
+                                break;
+
+                            default:
+                                if(response != "true")
+                                {
+                                    response = "false";
+                                }
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        if(jObj.ObjDefName == "OBJECT_Technical_Doc")
+                        {
+                            response = "false";
+                        }
+                    }
+                }
+                #region old code
                 //TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
                 //if (jsonobjectO.Completed)
                 //{
@@ -404,13 +514,13 @@ namespace Sync365
                 //        textmessage = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно запущен";
                 //    }
                 //}
-
                 //var Functions = new Functions(ThisApplication);
                 //Functions.SendTDMSMessage(textmessage, textmessage, project.Attributes["A_User_GIP"].User);
+                #endregion
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
-                response = "true";
+                Logger.Info("ObjectsStatusChange: finished");
                 return response;
             }
             catch (Exception ex)
@@ -419,6 +529,26 @@ namespace Sync365
                 response = ex.Message + "\n" + ex.StackTrace;
             }
             return response;
+        }
+
+        /* ЗАКРЫТИЕ ПВ */
+        public void ClosePackageUnload(TDMSObject O_Package_Unload)
+        {
+            TDMSTableAttribute Rows = O_Package_Unload.Attributes["A_Table_DocReview"].Rows;
+            bool result = true;
+            foreach (TDMSTableAttributeRow row in Rows)
+            {
+                if (row.Attributes["A_Cls_DocReviewStatus"].Classifier.SysName == ThisApplication.Classifiers["N_DocReview_Status"].Classifiers["N_DocReview_Status_OnReview"].SysName)
+                {
+                    result = false;
+                    break;
+                }
+            };
+            if (result)
+            {
+                Logger.Info("result = true");
+                O_Package_Unload.Status = ThisApplication.Statuses["S_Package_Unload_Closed"];
+            }
         }
         //4 поток - api/ObjectsStatusChange метод POST
     }
