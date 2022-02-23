@@ -332,7 +332,7 @@ namespace Sync365
                     O_DocClaim.Attributes["A_Date_Create"].Value = remark.ATTR_Remark_Date;
                     O_DocClaim.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
                     O_DocClaim.Attributes["A_Ref_DocClaimRegistry"].Value = O_ClaimRegistry;
-                    O_DocClaim.Attributes["A_User_Author"].Value = mUser;
+                    //O_DocClaim.Attributes["A_User_Author"].Value = mUser;
                     O_DocClaim.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], mUser);
 
                     foreach (jFile file in remark.Files)
@@ -357,25 +357,29 @@ namespace Sync365
             }
         }
 
-        /* Flow 3 STATUS DOC OR RZ*/
-        [Route("api/GPPgetDocRZstatus"), HttpPost]
-        public string GPPgetDocRZstatus([FromBody] ResponseJson jsonobjectO)
+        /* Flow 3.1 STATUS DOC OR RZ*/
+        [Route("api/GPPgetAnswersZMresponse"), HttpPost]
+        public string GPPgetAnswersZMresponse([FromBody] ResponseJson jsonobjectO)
         {
             try
             {
-                Logger.Info("GPPgetDocRZstatus: started");
+                Logger.Info("GPPgetAnswersZMresponse: started");
                 String textmessage = "";
-                TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
+                TDMSObject RZ = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
                 if (jsonobjectO.Completed)
                 {
-                    if (jsonobjectO.Objects[0].ObjStatus == "STATUS_Prj_InProgress")
+                    if (jsonobjectO.Objects[0].ObjStatus == "STATUS_ANALYSIS_OF_RESPONSES")
                     {
-                        textmessage = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно запущен";
+                        textmessage = $"Реестр замечаний \"{RZ.Attributes["A_Str_Designation"].Value}\" успешно принят";
+                    }
+                    else
+                    {
+                        textmessage = $"Реестр замечаний \"{RZ.Attributes["A_Str_Designation"].Value}\" не принят. Попробуйте еще раз позднее";
                     }
                 }
 
                 var Functions = new Functions(ThisApplication);
-                Functions.SendTDMSMessage(textmessage, textmessage, project.Attributes["A_User_GIP"].User);
+                Functions.SendTDMSMessage(textmessage, textmessage, RZ.Attributes["A_User_Author"].User);
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
