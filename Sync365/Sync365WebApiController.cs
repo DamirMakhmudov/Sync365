@@ -185,7 +185,10 @@ namespace Sync365
             {
                 Logger.Info("GPPtransferProjectResponse: started");
                 String mBody = "";
-                TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal); ;
+                TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
+                Logger.Info(jsonobjectO.Objects[0].ObjGuidExternal);
+                Logger.Info(jsonobjectO.Objects.Count.ToString());
+
                 if (jsonobjectO.Completed)
                 {
                     if (jsonobjectO.Objects[0].ObjStatus == "STATUS_Prj_Created")
