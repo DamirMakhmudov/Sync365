@@ -136,7 +136,14 @@ namespace Sync365
                         TDMSObject O_Package_Unload = O_ClaimRegistry.Parent;
                         TDMSObject O_Project = O_Package_Unload.Attributes["A_Ref_Project"].Object;
                         ThisApplication.SaveChanges();
-                        Functions.SendTDMSMessage($"Реестр замечаний: \"{O_Package_Unload.Description}\"", $"Получен реестр замечаний \"{O_ClaimRegistry.Description}\" по следующему пакету загрузки \"{O_Package_Unload.Description}\"", O_Package_Unload.Attributes["A_User_Author"].User);
+                      /*  if(O_ClaimRegistry.Attributes["A_Ref_Doc"].Value != "")
+                        {
+                            if (O_ClaimRegistry.Attributes["A_Ref_Doc"].Value)
+                            {
+                                Functions.SendTDMSMessage($"Реестр замечаний: \"{O_Package_Unload.Description}\"", $"Получен реестр замечаний \"{O_ClaimRegistry.Description}\" по следующему пакету загрузки \"{O_Package_Unload.Description}\"", O_Package_Unload.Attributes["A_User_Author"].User);
+                            }
+                        }
+                      */
                     }
                     catch(Exception ex)
                     {
@@ -395,6 +402,24 @@ namespace Sync365
                 response = ex.Message + "\n" + ex.StackTrace;
             }
             return response;
+        }
+
+        /* Test */
+        [Route("api/Test"), HttpPost]
+        public string Test([FromBody] ResponseJson jsonobjectO)
+        {
+            String resp = "";
+            TDMSObject O_ClaimRegistry = ThisApplication.GetObjectByGUID("{C2FB9902-B945-406D-AFD1-7416E9BAED2C}");
+            TDMSObject O_Doc = O_ClaimRegistry.Attributes["A_Ref_Doc"].Object;
+            if (O_Doc != null) {
+                TDMSUser User = O_Doc.Attributes["A_User_Author"].User;
+                if (User!= null)
+                {
+                    resp = User.Description;
+
+                }
+            }
+            return resp;
         }
 
         /* Flow 4 STATUS CHANGE */
