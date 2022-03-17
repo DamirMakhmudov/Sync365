@@ -185,6 +185,51 @@ namespace Sync365
             Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
         }
 
+        /* Test */
+        public string Test([FromBody] ResponseJson jsonobjectO)
+        {
+            TDMSObject O_Document = ThisApplication.GetObjectByGUID("{8D6EC218-895D-4051-BE49-A060F8C19F9F}");
+            TDMSUser A_User_Author = O_Document.Attributes["A_User_Author"].User;
+            if (A_User_Author != null)
+            {
+                TDMSTableAttribute tdept = A_User_Author.Attributes["A_Table_Depts"].Rows;
+                if (tdept.Count > 0)
+                {
+                    TDMSObject mdept = null;
+                    foreach (TDMSTableAttributeRow row in tdept)
+                    {
+                        if (row.Attributes["A_Bool_MainDept"].Value.ToString() == "True")
+                        {
+                            mdept = row.Attributes["A_Ref_Dept"].Object;
+                        }
+                    }
+                    if (mdept != null)
+                    {
+                        Logger.Info(mdept.Description);
+                        TDMSQuery qDeps = ThisApplication.Queries["Q_Dept_Users"];
+                        qDeps.SetParameter("DeptObj", mdept);
+                        string scode = mdept.Attributes["A_Str_NumCode"].Value.ToString().Replace(".", "_");
+
+                        if (!ThisApplication.Groups.Has("G_" + scode))
+                        {
+                            TDMSGroup gr = ThisApplication.Groups.Create();
+                            gr.SysName = "G_" + scode;
+                            gr.Description = $"{mdept.Attributes["A_Str_NumCode"].Value} { mdept.Attributes["A_Str_Name"].Value}";
+                            ThisApplication.SaveChanges();
+                        }
+                        TDMSGroup gr_gup = ThisApplication.Groups["G_" + scode];
+
+                        foreach (TDMSUser user in qDeps.Users)
+                        {
+                            gr_gup.Users.Add(user);
+                        }
+                        ThisApplication.SaveChanges();
+                    }
+                }
+            }
+            return "true";
+        }
+
         /* Flow 0.1 PROJECT */
         [Route("api/GPPtransferProjectResponse"), HttpPost] 
         public string GPPtransferProjectResponse([FromBody] ResponseJson jsonobjectO)
@@ -321,64 +366,43 @@ namespace Sync365
                 O_ClaimRegistry.Attributes["A_User_Author"].Value = mUser;
                 O_ClaimRegistry.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], mUser);
 
-                //TDMSUser A_User_Author = O_Document.Attributes["A_User_Author"].User;
-                //if (A_User_Author != null)
-                //{
-                //    TDMSTableAttribute tdept = A_User_Author.Attributes["A_Table_Depts"].Rows;
-                //    if (tdept.Count > 0) {
-                //        foreach (TDMSTableAttributeRow row in tdept)
-                //        {
-                //            bool val = row.Attributes["A_Bool_MainDept"].Value;
-                //            if (val == true)
-                //            {
+                TDMSUser A_User_Author = O_Document.Attributes["A_User_Author"].User;
+                if (A_User_Author != null)
+                {
+                    TDMSTableAttribute tdept = A_User_Author.Attributes["A_Table_Depts"].Rows;
+                    if (tdept.Count > 0)
+                    {
+                        TDMSObject mdept = null;
+                        foreach (TDMSTableAttributeRow row in tdept)
+                        {
+                            if (row.Attributes["A_Bool_MainDept"].Value.ToString() == "True")
+                            {
+                                mdept = row.Attributes["A_Ref_Dept"].Object;
+                            }
+                        }
+                        if (mdept != null)
+                        {
+                            TDMSQuery qDeps = ThisApplication.Queries["Q_Dept_Users"];
+                            qDeps.SetParameter("DeptObj", mdept);
+                            string scode = mdept.Attributes["A_Str_NumCode"].Value.ToString().Replace(".", "_");
 
-                //            }
-                //        }
+                            if (!ThisApplication.Groups.Has("G_" + scode))
+                            {
+                                TDMSGroup gr = ThisApplication.Groups.Create();
+                                gr.SysName = "G_" + scode;
+                                gr.Description = $"{mdept.Attributes["A_Str_NumCode"].Value} { mdept.Attributes["A_Str_Name"].Value}";
+                                ThisApplication.SaveChanges();
+                            }
+                            TDMSGroup gr_gup = ThisApplication.Groups["G_" + scode];
 
-                //        if attr_dd("A_Bool_MainDept") = true then
-                //        set mdept = attr_dd("A_Ref_Dept").Object
-                //        exit for
-                //      end if
-                //    next
-                //  end if
-                //            }
-                //}
-                /*
-                set curUser = ThisApplication.Users("SYSADMIN")
-                  set mdept = nothing
-
-                  set tdept = curUser.Attributes("A_Table_Depts").Rows
-                  if tdept.count > 0 then
-                    For each dd In tdept
-                      set attr_dd = dd.Attributes
-                      if attr_dd("A_Bool_MainDept") = true then
-                        set mdept = attr_dd("A_Ref_Dept").Object
-                        exit for
-                      end if
-                    next
-                  end if
-
-
-                  if not mdept is Nothing then
-                    mdept.Permissions = SysAdminPermissions
-
-                    set qDeps = thisapplication.Queries("Q_Dept_Users")
-                    qDeps.Parameter("DeptObj") = mdept
-
-
-                    scode = Replace(mdept.attributes("A_Str_NumCode"), ".", "_")
-                    if not ThisApplication.Groups.Has("G_" & scode) then
-                       call ThisApplication.ExecuteCommand("C_CreateGroupForDept", mdept)
-                    end if
-                    set gr_gup = ThisApplication.Groups("G_" & scode)
-
-
-                    for each user in qDeps.Users
-                      gr_gup.Users.Add user
-                    next
-                  end if
-                */
-
+                            foreach (TDMSUser user in qDeps.Users)
+                            {
+                                gr_gup.Users.Add(user);
+                            }
+                            ThisApplication.SaveChanges();
+                        }
+                    }
+                }
                 ThisApplication.SaveContextObjects();
 
                 foreach (jRemark remark in jsonobject.Remarks)
@@ -466,51 +490,7 @@ namespace Sync365
 
         /* Test */
         [Route("api/Test"), HttpPost]
-        public string Test([FromBody] ResponseJson jsonobjectO)
-        {
-            TDMSObject O_Document = ThisApplication.GetObjectByGUID("{8D6EC218-895D-4051-BE49-A060F8C19F9F}");
-            TDMSUser A_User_Author = O_Document.Attributes["A_User_Author"].User;
-            if (A_User_Author != null)
-            {
-                TDMSTableAttribute tdept = A_User_Author.Attributes["A_Table_Depts"].Rows;
-                if (tdept.Count > 0)
-                {
-                    TDMSObject mdept = null;
-                    foreach (TDMSTableAttributeRow row in tdept)
-                    {
-                        if (row.Attributes["A_Bool_MainDept"].Value.ToString() == "True")
-                        {
-                            mdept = row.Attributes["A_Ref_Dept"].Object;
-                        }
-                    }
-                    if(mdept != null)
-                    {
-                        Logger.Info(mdept.Description);
-                        TDMSQuery qDeps = ThisApplication.Queries["Q_Dept_Users"];
-                        qDeps.SetParameter("DeptObj", mdept);
-                        string scode = mdept.Attributes["A_Str_NumCode"].Value.ToString().Replace(".", "_");
-
-                        if ( !ThisApplication.Groups.Has("G_" + scode))
-                        {
-                            //ThisApplication.ExecuteCommand("C_CreateGroupForDept", mdept);
-                            //ThisApplication.Context.CommandManager.Run("C_CreateGroupForDept", mdept);
-                            TDMSGroup gr = ThisApplication.Groups.Create();
-                            gr.SysName = "G_" + scode;
-                            gr.Description = $"{mdept.Attributes["A_Str_NumCode"].Value} { mdept.Attributes["A_Str_Name"].Value}";
-                            ThisApplication.SaveChanges();
-                        }
-                        TDMSGroup gr_gup = ThisApplication.Groups["G_" + scode];
-
-                        foreach(TDMSUser user in qDeps.Users)
-                        {
-                            gr_gup.Users.Add(user);
-                        }
-                        ThisApplication.SaveChanges();
-                    }
-                }
-            }
-            return "true";
-        }
+       
         /* Flow 4 STATUS CHANGE */
         [Route("api/ObjectsStatusChange"), HttpPost]
         public string ObjectsStatusChange([FromBody] ResponseJson jsonobjectO)
