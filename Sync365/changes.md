@@ -11,3 +11,4 @@ LIB_UTILITIES|LIB_UTILITIES |cmd
 Замечание реестра|O_DocClaim|obj
 Реестр замечаний|O_ClaimRegistry|obj
 Виды электронных носителей|N_HardWareType2|class
+Удалить ответственного|c_remove_resp_user|cmd
