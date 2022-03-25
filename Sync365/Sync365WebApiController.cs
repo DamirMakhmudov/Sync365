@@ -205,7 +205,6 @@ namespace Sync365
                     }
                     if (mdept != null)
                     {
-                        Logger.Info(mdept.Description);
                         TDMSQuery qDeps = ThisApplication.Queries["Q_Dept_Users"];
                         qDeps.SetParameter("DeptObj", mdept);
                         string scode = mdept.Attributes["A_Str_NumCode"].Value.ToString().Replace(".", "_");
@@ -365,6 +364,7 @@ namespace Sync365
                 TDMSUser mUser = O_Document.Attributes["A_User_Author"].User;
                 O_ClaimRegistry.Attributes["A_User_Author"].Value = mUser;
                 O_ClaimRegistry.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], mUser);
+                TDMSGroup gr_gup = null;
 
                 TDMSUser A_User_Author = O_Document.Attributes["A_User_Author"].User;
                 if (A_User_Author != null)
@@ -393,7 +393,7 @@ namespace Sync365
                                 gr.Description = $"{mdept.Attributes["A_Str_NumCode"].Value} { mdept.Attributes["A_Str_Name"].Value}";
                                 ThisApplication.SaveChanges();
                             }
-                            TDMSGroup gr_gup = ThisApplication.Groups["G_" + scode];
+                            gr_gup = ThisApplication.Groups["G_" + scode];
 
                             foreach (TDMSUser user in qDeps.Users)
                             {
@@ -427,6 +427,10 @@ namespace Sync365
                     O_DocClaim.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
                     O_DocClaim.Attributes["A_Ref_DocClaimRegistry"].Value = O_ClaimRegistry;
                     //O_DocClaim.Attributes["A_User_Author"].Value = mUser;
+                    if (gr_gup != null)
+                    {
+                        O_DocClaim.Roles.Create(ThisApplication.RoleDefs["R_Dept_Staff"], gr_gup);
+                    }
                     O_DocClaim.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], mUser);
 
                     foreach (jFile file in remark.Files)
