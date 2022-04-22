@@ -12,3 +12,7 @@ LIB_UTILITIES|LIB_UTILITIES |cmd
 Реестр замечаний|O_ClaimRegistry|obj
 Виды электронных носителей|N_HardWareType2|class
 Удалить ответственного|c_remove_resp_user|cmd
+Вернуть в работу | c_return_ro_work | cmd
+Сотрудники отдела|R_Dept_Staff|role
+Поиск Роли Соразработчик|Q_R_CoDeveloper|q
+Сотрудники подразделения|Q_Dept_Users|q
