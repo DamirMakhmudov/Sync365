@@ -48,6 +48,16 @@ namespace Sync365
         /// </summary>
         public string Guid { get; set; }
 
+        // <summary>
+        /// Атрибут - GUID во внешней системе
+        /// </summary>
+        public string External_Guid { get; set; }
+
+        /// <summary>
+        /// Атрибут - Документация (GUID во внешней системе)
+        /// </summary>
+        public string TD_External_Guid { get; set; }
+
         /// <summary>
         /// Статус Реестра замечаний
         /// </summary>
@@ -72,11 +82,6 @@ namespace Sync365
         /// Атрибут - Документация (GUID в TDM365)
         /// </summary>
         public string ATTR_TechDoc_For_Observation { get; set; }
-
-        /// <summary>
-        /// Атрибут - Документация (GUID во внешней системе)
-        /// </summary>
-        public string TD_External_Guid { get; set; }
 
         /// <summary>
         /// Атрибут - Наименование
@@ -138,6 +143,11 @@ namespace Sync365
         /// GUID замечания
         /// </summary>
         public string Guid { get; set; }
+
+        // <summary>
+        /// Атрибут - GUID во внешней системе
+        /// </summary>
+        public string External_Guid { get; set; }
 
         /// <summary>
         /// Статус Реестра замечаний
