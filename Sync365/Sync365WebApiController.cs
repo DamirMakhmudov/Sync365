@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Tdms.Api;
 using Tdms.Log;
 using System.IO;
@@ -13,9 +14,11 @@ using System;
 using System.Timers;
 using System.Net.Http;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Sync365
 {
+    /*
     public class Functions
     {
         public TDMSApplication ThisApplication;
@@ -30,37 +33,23 @@ namespace Sync365
             Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
         }
 
-        /* SEND TDMS MESSAGE */
-        public bool SendTDMSMessage(String mSubject, String mBody, TDMSUser mTo)
-        {
-            //Logger.Info(ThisApplication.DatabaseName.ToString());
-            TDMSMessage Msg = ThisApplication.CreateMessage();
-            Msg.Subject = mSubject;
-            Msg.Body = mBody;
-            Msg.ToAdd(mTo);
-            Msg.Send();
-            return true;
-        }
-
-        /* SEND POST REQUEST WITH JSON */
-        public string SendRequestPOST(string json, string url)
-        {
-            //var url = ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus";
-            var request = WebRequest.Create(url);
-            request.Method = "POST";
-            byte[] byteArray = Encoding.UTF8.GetBytes(json);
-            request.ContentType = "application/x-www-form-urlencoded";
-            request.ContentLength = byteArray.Length;
-            using var reqStream = request.GetRequestStream();
-            reqStream.Write(byteArray, 0, byteArray.Length);
-            using var response = request.GetResponse();
-            using var respStream = response.GetResponseStream();
-            using var reader = new StreamReader(respStream);
-            string data = reader.ReadToEnd();
-            return data;
-        }
+    public string SendRequestPOST(string json, string url)
+    {
+        var request = WebRequest.Create(url);
+        request.Method = "POST";
+        byte[] byteArray = Encoding.UTF8.GetBytes(json);
+        request.ContentType = "application/x-www-form-urlencoded";
+        request.ContentLength = byteArray.Length;
+        using var reqStream = request.GetRequestStream();
+        reqStream.Write(byteArray, 0, byteArray.Length);
+        using var response = request.GetResponse();
+        using var respStream = response.GetResponseStream();
+        using var reader = new StreamReader(respStream);
+        string data = reader.ReadToEnd();
+        return data;
     }
-
+    }
+    */
     /* SCHEDULER 2.1 */
     [TdmsApi("ShTask")]
     public class ShTask
@@ -77,11 +66,11 @@ namespace Sync365
         }
         public void Execute()
         {
-            var Functions = new Functions(ThisApplication);
+            //var Functions = new Functions(ThisApplication);
             try
             {
                 //Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
-                Logger.Info("2.1 started");
+                Logger.Info("Flow 2.1 started");
                 TDMSQuery qO_ClaimRegistry = ThisApplication.CreateQuery();
                 qO_ClaimRegistry.AddCondition(TDMSQueryConditionType.tdmQueryConditionObjectDef, "O_ClaimRegistry");
                 qO_ClaimRegistry.AddCondition(TDMSQueryConditionType.tdmQueryConditionAttribute, "= Null or =''", "A_Bool_Started");
@@ -132,7 +121,9 @@ namespace Sync365
                         rjsonobject.Objects.Add(rObject);
 
                         var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
-                        var data = Functions.SendRequestPOST(json, ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus");
+                        //var data = Functions.SendRequestPOST(json, ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus");
+                        var data = Functionso.SendRequestPOST(ThisApplication, json, ThisApplication.Attributes["a_url_365"].Value.ToString(), "/api/GPPimportRZstatus");
+
                         TDMSObject O_Package_Unload = O_ClaimRegistry.Parent;
                         TDMSObject O_Project = O_Package_Unload.Attributes["A_Ref_Project"].Object;
                         ThisApplication.SaveChanges();
@@ -143,11 +134,11 @@ namespace Sync365
                             TDMSUser User = O_Doc.Attributes["A_User_Author"].User;
                             if (User != null)
                             {
-                                Functions.SendTDMSMessage($"Реестр замечаний: \"{O_ClaimRegistry.Description}\"", $"Получен реестр замечаний \"{O_ClaimRegistry.Description}\" по следующему пакету загрузки \"{O_Package_Unload.Description}\"", User);
+                                Functionso.SendTDMSMessage(ThisApplication, $"Реестр замечаний: \"{O_ClaimRegistry.Description}\"", $"Получен реестр замечаний \"{O_ClaimRegistry.Description}\" по следующему пакету загрузки \"{O_Package_Unload.Description}\"", User);
                             }
                         }
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
                         ResponseJson rjsonobject = new ResponseJson();
                         rjsonobject.SystemName = systemname;
@@ -155,10 +146,11 @@ namespace Sync365
                         rjsonobject.Date = DateTime.Now.ToString();
                         rjsonobject.Completed = false;
                         var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
-                        var data = Functions.SendRequestPOST(json, ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus");
+                        //var data = Functions.SendRequestPOST(json, ThisApplication.Attributes["a_url_365"].Value + "/api/GPPimportRZstatus");
+                        var data = Functionso.SendRequestPOST(ThisApplication, json, ThisApplication.Attributes["a_url_365"].Value.ToString(), "/api/GPPimportRZstatus");
                         Logger.Error(data);
                     }
-                }
+                };
                 Logger.Info("2.1 finished");
             }
             catch (Exception ex)
@@ -186,61 +178,47 @@ namespace Sync365
         }
 
         /* Test */
-        [Route("api/Test"), HttpPost]
-        public string TestO([FromBody] ResponseJson jsonobjectO)
+        //[Authorize] 
+        [Route("api/test"), HttpPost]
+        public string Test([FromBody] JsonObject jsonobjectO)
         {
-            /*
-            TDMSObject O_Document = ThisApplication.GetObjectByGUID("{8D6EC218-895D-4051-BE49-A060F8C19F9F}");
-            TDMSUser A_User_Author = O_Document.Attributes["A_User_Author"].User;
-            if (A_User_Author != null)
-            {
-                TDMSTableAttribute tdept = A_User_Author.Attributes["A_Table_Depts"].Rows;
-                if (tdept.Count > 0)
-                {
-                    TDMSObject mdept = null;
-                    foreach (TDMSTableAttributeRow row in tdept)
-                    {
-                        if (row.Attributes["A_Bool_MainDept"].Value.ToString() == "True")
-                        {
-                            mdept = row.Attributes["A_Ref_Dept"].Object;
-                        }
-                    }
-                    if (mdept != null)
-                    {
-                        TDMSQuery qDeps = ThisApplication.Queries["Q_Dept_Users"];
-                        qDeps.SetParameter("DeptObj", mdept);
-                        string scode = mdept.Attributes["A_Str_NumCode"].Value.ToString().Replace(".", "_");
+            string host = "http://user.com";
+            string method = "api/test";
+            string res = host + method;
+            Logger.Info(res);
 
-                        if (!ThisApplication.Groups.Has("G_" + scode))
-                        {
-                            TDMSGroup gr = ThisApplication.Groups.Create();
-                            gr.SysName = "G_" + scode;
-                            gr.Description = $"{mdept.Attributes["A_Str_NumCode"].Value} { mdept.Attributes["A_Str_Name"].Value}";
-                            ThisApplication.SaveChanges();
-                        }
-                        TDMSGroup gr_gup = ThisApplication.Groups["G_" + scode];
+            return "true";
+            ResponseJson rjsonobject = new ResponseJson();
+            rjsonobject.SystemName = "hello";
+            rjsonobject.Date = DateTime.Now.ToString();
+            rjsonobject.Completed = false;
+            var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
 
-                        foreach (TDMSUser user in qDeps.Users)
-                        {
-                            gr_gup.Users.Add(user);
-                        }
-                        ThisApplication.SaveChanges();
-                    }
-                }
-            }
-            */
+            var data = Functionso.SendRequestPOST(ThisApplication, json, "http://192.168.16.113:444/", "api/authtest");
+            Logger.Info(data);
             return "true";
         }
 
+        /* Authorization test */
+        [Authorize]
+        [Route("api/authtest"), HttpPost]
+        //public string AuthTest([FromBody] ResponseJson responsejsonO)
+        public string AuthTest()
+        {
+            var Req = this.Request;
+            ResponseJson responsejsonO = System.Text.Json.JsonSerializer.Deserialize<ResponseJson>(Functionso.JSONReader(Req));
+            Logger.Info(responsejsonO.SystemName);
+            return "true after auth";
+        }
 
         /* Flow 0.1 PROJECT */
-        [Route("api/GPPtransferProjectResponse"), HttpPost] 
+        [Route("api/GPPtransferProjectResponse"), HttpPost]
         public string GPPtransferProjectResponse([FromBody] ResponseJson jsonobjectO)
         {
-            var Functions = new Functions(ThisApplication);
+            //var Functions = new Functions(ThisApplication);
             try
             {
-                Logger.Info("GPPtransferProjectResponse: started");
+                Logger.Info("0.1 GPPtransferProjectResponse: started");
                 String mBody = "";
                 TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
                 Logger.Info(jsonobjectO.Objects[0].ObjGuidExternal);
@@ -254,7 +232,7 @@ namespace Sync365
                         mBody = $"Проект \"{project.Attributes["A_Str_Designation"].Value}\" успешно доставлен";
                     }
                 }
-                Functions.SendTDMSMessage(mBody, mBody, project.Attributes["A_User_GIP"].User);
+                Functionso.SendTDMSMessage(ThisApplication, mBody, mBody, project.Attributes["A_User_GIP"].User);
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
@@ -276,7 +254,7 @@ namespace Sync365
         {
             try
             {
-                Logger.Info("GPPtransferProjectLaunched: started");
+                Logger.Info("0.2 GPPtransferProjectLaunched: started");
                 String textmessage = "";
                 TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
                 if (jsonobjectO.Completed)
@@ -287,8 +265,8 @@ namespace Sync365
                     }
                 }
 
-                var Functions = new Functions(ThisApplication);
-                Functions.SendTDMSMessage(textmessage, textmessage, project.Attributes["A_User_GIP"].User);
+                //var Functions = new Functions(ThisApplication);
+                Functionso.SendTDMSMessage(ThisApplication, textmessage, textmessage, project.Attributes["A_User_GIP"].User);
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
@@ -346,7 +324,7 @@ namespace Sync365
             }
         }
 
-        /* Flow 2.0 RZ */
+        /* Flow 2 old RZ */
         [Route("api/GPPgetClaimRegistryOld"), HttpPost]
         public string GPPgetClaimRegistryOld([FromBody] JsonPackageRZ jsonobject)
         {
@@ -406,7 +384,7 @@ namespace Sync365
                             ThisApplication.SaveChanges();
                         }
                     }
-                }
+                };
                 ThisApplication.SaveContextObjects();
 
                 foreach (jRemark remark in jsonobject.Remarks)
@@ -465,37 +443,50 @@ namespace Sync365
         {
             try
             {
+                string response = "true";
                 Logger.Info("Flow 2. GPPgetClaimRegistry: started");
-                 TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
-                if (O_Package_Unload != null)
+                TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
+                if (O_Package_Unload == null)
                 {
-                    Logger.Info("O_Package_Unload was found");
+                    response = $"Не найден 'Пакет выгрузки'{ jsonobject.O_Package_Unload.ToString() }";
+                    Logger.Info(response);
+                    return response;
+                };
 
+                Logger.Info($"Найден 'Пакет выгрузки' { jsonobject.O_Package_Unload.ToString() }");
+                TDMSObject O_ClaimRegistry = ThisApplication.GetObjectByGUID(jsonobject.RZ.External_Guid.ToString());
+                jUser UserInitiated;
+                TDMSObject O_Document;
+                TDMSUser A_User_Author;
+                TDMSGroup gr_gup = null;
+
+                if (O_ClaimRegistry == null)
+                {
+                    Logger.Info($"Не найден 'Реестр замечаний' { jsonobject.RZ.External_Guid }");
+                    O_ClaimRegistry = O_Package_Unload.Objects.Create("O_ClaimRegistry");
+                    Logger.Info($"Создан 'Реестр замечаний' { O_ClaimRegistry.GUID }");
                 }
                 else
                 {
-                    return $"Не найден 'Пакет выгрузки' с GUID = { jsonobject.O_Package_Unload.ToString() }";
-                }
-                return "true";
+                    Logger.Info($"Найден 'Реестр замечаний' { jsonobject.RZ.External_Guid }");
+                };
 
-                TDMSObject O_ClaimRegistry = O_Package_Unload.Objects.Create("O_ClaimRegistry");
                 O_ClaimRegistry.Attributes["A_Str_GUID_External"].Value = jsonobject.RZ.Guid;
                 O_ClaimRegistry.Attributes["A_Str_Name"].Value = jsonobject.RZ.ATTR_NAME_REGISTRY;
                 O_ClaimRegistry.Attributes["A_Date_Create"].Value = DateTime.Parse(jsonobject.RZ.ATTR_REGYSTRY_CREATION_DATE);
                 O_ClaimRegistry.Attributes["A_Str_Designation"].Value = jsonobject.RZ.ATTR_Registry_Num;
                 O_ClaimRegistry.Attributes["A_Dat_Req_Deadline"].Value = jsonobject.RZ.ATTR_REGYSTRY_COMPLETE_THE_STAGE_BEFORE;
-                jUser UserInitiated = jsonobject.RZ.ATTR_Registry_UserInitiated;
+                UserInitiated = jsonobject.RZ.ATTR_Registry_UserInitiated;
                 O_ClaimRegistry.Attributes["A_Str_ClaimAuthor"].Value = $"{UserInitiated.LastName} {UserInitiated.FirstName} {UserInitiated.MiddleName}, {UserInitiated.Tel}, {UserInitiated.Mail}";
-                TDMSObject O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.TD_External_Guid.ToString());
+                O_Document = ThisApplication.GetObjectByGUID(jsonobject.RZ.TD_External_Guid.ToString());
                 O_ClaimRegistry.Attributes["A_Ref_Doc"].Value = O_Document;
-                TDMSUser mUser = O_Document.Attributes["A_User_Author"].User;
-                O_ClaimRegistry.Attributes["A_User_Author"].Value = mUser;
-                O_ClaimRegistry.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], mUser);
-                TDMSGroup gr_gup = null;
+                A_User_Author = O_Document.Attributes["A_User_Author"].User;
 
-                TDMSUser A_User_Author = O_Document.Attributes["A_User_Author"].User;
                 if (A_User_Author != null)
                 {
+                    O_ClaimRegistry.Attributes["A_User_Author"].Value = A_User_Author;
+                    O_ClaimRegistry.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], A_User_Author);
+
                     TDMSTableAttribute tdept = A_User_Author.Attributes["A_Table_Depts"].Rows;
                     if (tdept.Count > 0)
                     {
@@ -530,10 +521,110 @@ namespace Sync365
                         }
                     }
                 }
+                else
+                {
+                    Logger.Info($"Не заполнен атрибут 'A_User_Author' в документе {O_Document.GUID}");
+                };
+
                 ThisApplication.SaveContextObjects();
+                //string FilesString;
+
 
                 foreach (jRemark remark in jsonobject.Remarks)
                 {
+                    //string FilesString;
+
+                    TDMSObject O_DocClaim = ThisApplication.GetObjectByGUID(remark.External_Guid);
+                    if (O_DocClaim == null)
+                    {
+                        Logger.Info($"Не найдено 'Замечание' {remark.External_Guid}");
+                        String FilesString = "";
+
+                        O_ClaimRegistry.Attributes["A_Bool_Started"].Value = false;
+                        O_ClaimRegistry.Status = ThisApplication.Statuses["S_ClaimRegistry_Actual"];
+
+                        O_DocClaim = O_ClaimRegistry.Objects.Create("O_DocClaim");
+                        O_DocClaim.Attributes["A_Str_Designation"].Value = remark.ATTR_Remark_Num;
+                        O_DocClaim.Attributes["A_Str_ClaimDesc"].Value = remark.ATTR_Remark;
+                        //O_DocClaim.Attributes["A_Str_AnswerDesc"].Value = remark.ATTR_Answer;
+                        //O_DocClaim.Attributes["A_Str_Answer"].Value = remark.ATTR_Answer_Type;
+                        O_DocClaim.Attributes["A_Int_DocVersion"].Value = remark.ATTR_TechDoc_Version;
+                        O_DocClaim.Attributes["A_Str_GUID_External"].Value = remark.Guid;
+                        jUser authorZM = remark.ATTR_AUTHOR_ZM;
+                        O_DocClaim.Attributes["A_Str_ClaimAuthor"].Value = $"{authorZM.LastName} {authorZM.FirstName} {authorZM.MiddleName}, {authorZM.Tel}, {authorZM.Mail}";
+                        //O_DocClaim.Attributes["A_Date_Answer"].Value = remark.ATTR_Answer_Date;
+                        O_DocClaim.Attributes["A_Date_Create"].Value = remark.ATTR_Remark_Date;
+                        O_DocClaim.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
+                        O_DocClaim.Attributes["A_Ref_DocClaimRegistry"].Value = O_ClaimRegistry;
+                        if (gr_gup != null)
+                        {
+                            O_DocClaim.Roles.Create(ThisApplication.RoleDefs["R_Dept_Staff"], gr_gup);
+                        }
+                        O_DocClaim.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], A_User_Author);
+                        foreach (jFile file in remark.Files)
+                        {
+                            FilesString += file.Path + ";";
+                        };
+                        O_DocClaim.Attributes["A_Str_Files"].Value = FilesString;
+                        Logger.Info($"Создано 'Замечание' {O_DocClaim.GUID}");
+                    }
+                    else
+                    {
+                        switch (remark.Status.Sysname)
+                        {
+                            case "STATUS_GETTING_A_RESPONSE_TO_ZM": //Выдано
+
+                                String FilesString = "";
+                                int i = Int32.Parse(O_DocClaim.VersionName) + 1;
+                                O_DocClaim.CreateVersion(i, $"Создана на базе {O_DocClaim.VersionName}");
+                                ThisApplication.SaveChanges();
+                                //O_DocClaim.Update();
+                                TDMSObject O_DocClaim_new = O_DocClaim.Versions.Active;
+                                O_ClaimRegistry.Attributes["A_Bool_Started"].Value = false;
+                                O_ClaimRegistry.Status = ThisApplication.Statuses["S_ClaimRegistry_Actual"];
+                                O_DocClaim_new.Attributes["A_Bool_Started"].Value = false;
+                                O_DocClaim_new.Attributes["A_Str_Designation"].Value = remark.ATTR_Remark_Num;
+                                O_DocClaim_new.Attributes["A_Str_ClaimDesc"].Value = remark.ATTR_Remark;
+                                O_DocClaim_new.Attributes["A_User_AnswerAuthor"].Value = "";
+                                O_DocClaim_new.Attributes["A_Str_AnswerDesc"].Value = "";
+                                O_DocClaim_new.Attributes["A_Str_Answer"].Value = "";
+                                O_DocClaim_new.Attributes["A_Int_DocVersion"].Value = remark.ATTR_TechDoc_Version;
+                                O_DocClaim_new.Attributes["A_Str_GUID_External"].Value = remark.Guid;
+                                jUser authorZM = remark.ATTR_AUTHOR_ZM;
+                                O_DocClaim_new.Attributes["A_Str_ClaimAuthor"].Value = $"{authorZM.LastName} {authorZM.FirstName} {authorZM.MiddleName}, {authorZM.Tel}, {authorZM.Mail}";
+                                O_DocClaim_new.Attributes["A_Date_Answer"].Value = "";
+                                O_DocClaim_new.Attributes["A_Date_Create"].Value = remark.ATTR_Remark_Date;
+                                O_DocClaim_new.Attributes["A_Str_Claim"].Value = remark.ATTR_REMARK_TYPE;
+                                O_DocClaim_new.Attributes["A_Ref_DocClaimRegistry"].Value = O_ClaimRegistry;
+                                if (gr_gup != null)
+                                {
+                                    O_DocClaim_new.Roles.Create(ThisApplication.RoleDefs["R_Dept_Staff"], gr_gup);
+                                };
+                                O_DocClaim_new.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], A_User_Author);
+                                foreach (jFile file in remark.Files)
+                                {
+                                    FilesString += file.Path + ";";
+                                };
+                                O_DocClaim_new.Attributes["A_Str_Files"].Value = FilesString;
+                                Logger.Info("!!!!!");
+                                O_DocClaim_new.Update();
+                                Logger.Info(O_DocClaim_new.GUID);
+                                O_DocClaim_new.Status = ThisApplication.Statuses["S_DocClaim_Actual"];
+                                foreach (TDMSFile file in O_DocClaim_new.Files)
+                                {
+                                    O_DocClaim_new.Files.Remove(file);
+                                };
+                                ThisApplication.SaveChanges();
+                                break;
+                            case "STATUS_COMMENT_RESOLVED": //Устранено
+                                O_DocClaim.Status = ThisApplication.Statuses["S_DocClaim_NotActual"];
+                                ThisApplication.SaveContextObjects();
+
+                                break;
+                        }
+                    };
+
+                    /*
                     String FilesString = "";
                     TDMSObject O_DocClaim = O_ClaimRegistry.Objects.Create("O_DocClaim");
                     O_DocClaim.Attributes["A_Str_Designation"].Value = remark.ATTR_Remark_Num;
@@ -558,7 +649,7 @@ namespace Sync365
                     {
                         O_DocClaim.Roles.Create(ThisApplication.RoleDefs["R_Dept_Staff"], gr_gup);
                     }
-                    O_DocClaim.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], mUser);
+                    O_DocClaim.Roles.Create(ThisApplication.RoleDefs["ROLE_DEVELOPER"], A_User_Author);
 
                     foreach (jFile file in remark.Files)
                     {
@@ -568,16 +659,16 @@ namespace Sync365
                         //ThisApplication.SaveContextObjects();
                     }
                     O_DocClaim.Attributes["A_Str_Files"].Value = FilesString;
+                    */
                     ThisApplication.SaveContextObjects();
                 }
-                Logger.Info("GPPgetClaimRegistry: finished");
-                response = "true";
+                Logger.Info("Flow 2. GPPgetClaimRegistry: finished");
                 return response;
             }
             catch (Exception ex)
             {
                 response = ex.Message + "\n" + ex.StackTrace;
-                Logger.Info($"GPPgetClaimRegistry: finished with: {response}");
+                Logger.Info($"Flow 2. GPPgetClaimRegistry: finished with: {response}");
                 return response;
             }
         }
@@ -603,8 +694,8 @@ namespace Sync365
                     }
                 }
 
-                var Functions = new Functions(ThisApplication);
-                Functions.SendTDMSMessage(textmessage, textmessage, RZ.Attributes["A_User_Author"].User);
+                //var Functions = new Functions(ThisApplication);
+                Functionso.SendTDMSMessage(ThisApplication, textmessage, textmessage, RZ.Attributes["A_User_Author"].User);
 
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
@@ -626,13 +717,14 @@ namespace Sync365
             try
             {
                 Logger.Info("ObjectsStatusChange: started");
-                var Functions = new Functions(ThisApplication);
+                //var Functions = new Functions(ThisApplication);
                 var objects = jsonobjectO.Objects;
                 String response = "true";
 
-                foreach (jObject jObj in objects) {
+                foreach (jObject jObj in objects)
+                {
                     TDMSObject tdmsObject = ThisApplication.GetObjectByGUID(jObj.ObjGuidExternal);
-                    if( tdmsObject != null)
+                    if (tdmsObject != null)
                     {
                         switch (jObj.ObjStatus)
                         {
@@ -666,7 +758,7 @@ namespace Sync365
                                 ClosePackageUnload(O_Package_Unload);
                                 TDMSUser tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
                                 String text = $"Документ \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" введен в действие";
-                                Functions.SendTDMSMessage(text, text, tdmsUser);
+                                Functionso.SendTDMSMessage(ThisApplication, text, text, tdmsUser);
                                 //response = "true";
                                 break;
 
@@ -700,7 +792,7 @@ namespace Sync365
                                 ClosePackageUnload(O_Package_Unload);
                                 tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
                                 text = $"Документ \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" аннулирован";
-                                Functions.SendTDMSMessage(text, text, tdmsUser);
+                                Functionso.SendTDMSMessage(ThisApplication, text, text, tdmsUser);
                                 response = "true";
                                 break;
 
@@ -714,12 +806,12 @@ namespace Sync365
                                 ThisApplication.SaveChanges();
                                 tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
                                 text = $"Реестр замечаний \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" закрыт";
-                                Functions.SendTDMSMessage(text, text, tdmsUser);
+                                Functionso.SendTDMSMessage(ThisApplication, text, text, tdmsUser);
                                 //response = "true";
                                 break;
 
                             default:
-                                if(response != "true")
+                                if (response != "true")
                                 {
                                     response = "false";
                                 }
@@ -728,7 +820,7 @@ namespace Sync365
                     }
                     else
                     {
-                        if(jObj.ObjDefName == "OBJECT_Technical_Doc")
+                        if (jObj.ObjDefName == "OBJECT_Technical_Doc")
                         {
                             response = "false";
                         }
