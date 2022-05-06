@@ -182,10 +182,10 @@ namespace Sync365
         [Route("api/test"), HttpPost]
         public string Test([FromBody] JsonObject jsonobjectO)
         {
-            string host = "http://user.com";
-            string method = "api/test";
-            string res = host + method;
-            Logger.Info(res);
+            string Auth = Convert.ToBase64String(Encoding.Default.GetBytes("rest:tdm365"));
+            string jsonToken = AuthorizationServiceTDMS.SendTokenRequest(ThisApplication, "http://192.168.16.113:444/", "rest", "tdm365");
+            return jsonToken;
+            Logger.Info(jsonToken);
 
             return "true";
             ResponseJson rjsonobject = new ResponseJson();
@@ -205,6 +205,8 @@ namespace Sync365
         //public string AuthTest([FromBody] ResponseJson responsejsonO)
         public string AuthTest()
         {
+            Logger.Info("here");
+            return "all good";
             var Req = this.Request;
             ResponseJson responsejsonO = System.Text.Json.JsonSerializer.Deserialize<ResponseJson>(Functionso.JSONReader(Req));
             Logger.Info(responsejsonO.SystemName);
@@ -212,6 +214,7 @@ namespace Sync365
         }
 
         /* Flow 0.1 PROJECT */
+        [Authorize]
         [Route("api/GPPtransferProjectResponse"), HttpPost]
         public string GPPtransferProjectResponse([FromBody] ResponseJson jsonobjectO)
         {
@@ -249,6 +252,7 @@ namespace Sync365
         }
 
         /* Flow 0.2 PROJECT */
+        [Authorize]
         [Route("api/GPPtransferProjectLaunched"), HttpPost]
         public string GPPtransferProjectLaunched([FromBody] ResponseJson jsonobjectO)
         {
@@ -283,6 +287,7 @@ namespace Sync365
         }
 
         /* Flow 1.1 PERDOC */
+        [Authorize]
         [Route("api/GPPtransferDocResponse"), HttpPost]
         public string GPPtransferDocResponse([FromBody] ResponseJson jsonobject)
         {
@@ -325,6 +330,7 @@ namespace Sync365
         }
 
         /* Flow 2 old RZ */
+        [Authorize]
         [Route("api/GPPgetClaimRegistryOld"), HttpPost]
         public string GPPgetClaimRegistryOld([FromBody] JsonPackageRZ jsonobject)
         {
@@ -438,6 +444,7 @@ namespace Sync365
         }
 
         /* Flow 2 RZ */
+        [Authorize]
         [Route("api/GPPgetClaimRegistry"), HttpPost]
         public string GPPgetClaimRegistry([FromBody] JsonPackageRZ jsonobject)
         {
@@ -674,6 +681,7 @@ namespace Sync365
         }
 
         /* Flow 3.1 STATUS DOC OR RZ*/
+        [Authorize]
         [Route("api/GPPgetAnswersZMresponse"), HttpPost]
         public string GPPgetAnswersZMresponse([FromBody] ResponseJson jsonobjectO)
         {
@@ -711,6 +719,7 @@ namespace Sync365
         }
 
         /* Flow 4 STATUS CHANGE */
+        [Authorize]
         [Route("api/ObjectsStatusChange"), HttpPost]
         public string ObjectsStatusChange([FromBody] ResponseJson jsonobjectO)
         {
@@ -853,6 +862,7 @@ namespace Sync365
         }
 
         /* ЗАКРЫТИЕ ПВ */
+        [Authorize]
         public void ClosePackageUnload(TDMSObject O_Package_Unload)
         {
             TDMSTableAttribute Rows = O_Package_Unload.Attributes["A_Table_DocReview"].Rows;

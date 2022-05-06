@@ -29,6 +29,7 @@ public class AuthorizationServiceTDMS
         {
             Password = Password ?? "";
             string Auth = Convert.ToBase64String(Encoding.Default.GetBytes(Login + ":" + Password));
+
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(ServerHost + "token");
             request.Method = "POST";
             request.Accept = "/";
