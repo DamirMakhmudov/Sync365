@@ -224,8 +224,6 @@ namespace Sync365
                 Logger.Info("0.1 GPPtransferProjectResponse: started");
                 String mBody = "";
                 TDMSObject project = ThisApplication.GetObjectByGUID(jsonobjectO.Objects[0].ObjGuidExternal);
-                Logger.Info(jsonobjectO.Objects[0].ObjGuidExternal);
-                Logger.Info(jsonobjectO.Objects.Count.ToString());
 
                 if (jsonobjectO.Completed)
                 {
@@ -293,7 +291,7 @@ namespace Sync365
         {
             try
             {
-                Logger.Info("GPPtransferDocResponse: started");
+                Logger.Info("1.1 GPPtransferDocResponse: started");
                 TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
                 TDMSAttributes Attrs = O_Package_Unload.Attributes;
                 if (jsonobject.Completed)
@@ -318,7 +316,7 @@ namespace Sync365
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
                 response = "true";
-                Logger.Info("GPPtransferDocResponse: finished");
+                Logger.Info("1.1 GPPtransferDocResponse: finished");
                 return response;
             }
             catch (Exception ex)
@@ -613,7 +611,6 @@ namespace Sync365
                                     FilesString += file.Path + ";";
                                 };
                                 O_DocClaim_new.Attributes["A_Str_Files"].Value = FilesString;
-                                Logger.Info("!!!!!");
                                 O_DocClaim_new.Update();
                                 Logger.Info(O_DocClaim_new.GUID);
                                 O_DocClaim_new.Status = ThisApplication.Statuses["S_DocClaim_Actual"];
@@ -680,7 +677,7 @@ namespace Sync365
             }
         }
 
-        /* Flow 3.1 STATUS DOC OR RZ*/
+        /* Flow 3.1 STATUS DOC OR RZ */
         [Authorize]
         [Route("api/GPPgetAnswersZMresponse"), HttpPost]
         public string GPPgetAnswersZMresponse([FromBody] ResponseJson jsonobjectO)
@@ -749,7 +746,7 @@ namespace Sync365
                                     }
                                 }
 
-                                /* Находим Пакет выгрузки связанный с этим Доком*/
+                                /* Находим Пакет выгрузки связанный с этим Доком */
                                 TDMSObject O_Package_Unload = tdmsObject.Attributes["A_Ref_Package_Unload"].Object;
 
                                 /* В табличном атрибуте мменяем статус напротив Дока */
@@ -847,7 +844,6 @@ namespace Sync365
                 //var Functions = new Functions(ThisApplication);
                 //Functions.SendTDMSMessage(textmessage, textmessage, project.Attributes["A_User_GIP"].User);
                 #endregion
-
                 ThisApplication.SaveChanges();
                 ThisApplication.SaveContextObjects();
                 Logger.Info("ObjectsStatusChange: finished");
@@ -862,7 +858,6 @@ namespace Sync365
         }
 
         /* ЗАКРЫТИЕ ПВ */
-        [Authorize]
         public void ClosePackageUnload(TDMSObject O_Package_Unload)
         {
             TDMSTableAttribute Rows = O_Package_Unload.Attributes["A_Table_DocReview"].Rows;
