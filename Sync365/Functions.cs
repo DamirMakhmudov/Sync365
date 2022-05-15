@@ -23,9 +23,9 @@ namespace Sync365
             Logger = Tdms.Log.LogManager.GetLogger("Sync365WebApi");
         }
 
-        public TDMSApplication ThisApplication;
+        //public TDMSApplication ThisApplication;
         public ILogger Logger { get; set; }
-        public TDMSObject thisobject;
+        //public TDMSObject thisobject;
         public JsonObject jsonobject;
         public string response;
 
@@ -48,6 +48,7 @@ namespace Sync365
             Msg.Subject = mSubject;
             Msg.Body = mBody;
             Msg.ToAdd(mTo);
+            Msg.System = false;
             Msg.Send();
         }
 

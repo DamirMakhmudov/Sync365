@@ -23,6 +23,5 @@ namespace Sync365
         public string ObjStatus { get; set; }
         public string StatusModifyTime { get; set; }
         public string ObjDefName{ get; set; }
-
     }
 }

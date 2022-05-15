@@ -30,7 +30,7 @@ public class AuthorizationServiceTDMS
             Password = Password ?? "";
             string Auth = Convert.ToBase64String(Encoding.Default.GetBytes(Login + ":" + Password));
 
-            if (ServerHost.Substring(ServerHost.Length - 2, 1) != "/") ServerHost = ServerHost + "/";
+            if (ServerHost.Substring(ServerHost.Length - 1, 1) != "/") ServerHost = ServerHost + "/";
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(ServerHost + "token");
             request.Method = "POST";

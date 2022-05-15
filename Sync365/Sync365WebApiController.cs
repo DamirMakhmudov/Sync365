@@ -182,20 +182,25 @@ namespace Sync365
         [Route("api/test"), HttpPost]
         public string Test([FromBody] JsonObject jsonobjectO)
         {
-            string Auth = Convert.ToBase64String(Encoding.Default.GetBytes("rest:tdm365"));
-            string jsonToken = AuthorizationServiceTDMS.SendTokenRequest(ThisApplication, "http://192.168.16.113:444/", "rest", "tdm365");
-            return jsonToken;
-            Logger.Info(jsonToken);
+            TDMSObject obj = ThisApplication.GetObjectByGUID(jsonobjectO.ObjGuid);
+            TDMSUser user = obj.Attributes["A_User_GIP"].User;
+            Logger.Info(user.Description);
+            Logger.Info("start sending");
+            Functionso.SendTDMSMessage(ThisApplication, "sub", "body", user);
+            //string Auth = Convert.ToBase64String(Encoding.Default.GetBytes("rest:tdm365"));
+            //string jsonToken = AuthorizationServiceTDMS.SendTokenRequest(ThisApplication, "http://192.168.16.113:444/", "rest", "tdm365");
+            //return jsonToken;
+            //Logger.Info(jsonToken);
 
-            return "true";
-            ResponseJson rjsonobject = new ResponseJson();
-            rjsonobject.SystemName = "hello";
-            rjsonobject.Date = DateTime.Now.ToString();
-            rjsonobject.Completed = false;
-            var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
+            //return "true";
+            //ResponseJson rjsonobject = new ResponseJson();
+            //rjsonobject.SystemName = "hello";
+            //rjsonobject.Date = DateTime.Now.ToString();
+            //rjsonobject.Completed = false;
+            //var json = System.Text.Json.JsonSerializer.Serialize(rjsonobject);
 
-            var data = Functionso.SendRequestPOST(ThisApplication, json, "http://192.168.16.113:444/", "api/authtest");
-            Logger.Info(data);
+            //var data = Functionso.SendRequestPOST(ThisApplication, json, "http://192.168.16.113:444/", "api/authtest");
+            //Logger.Info(data);
             return "true";
         }
 
@@ -206,10 +211,10 @@ namespace Sync365
         public string AuthTest()
         {
             Logger.Info("here");
-            return "all good";
-            var Req = this.Request;
-            ResponseJson responsejsonO = System.Text.Json.JsonSerializer.Deserialize<ResponseJson>(Functionso.JSONReader(Req));
-            Logger.Info(responsejsonO.SystemName);
+            //return "all good";
+            //var Req = this.Request;
+            //ResponseJson responsejsonO = System.Text.Json.JsonSerializer.Deserialize<ResponseJson>(Functionso.JSONReader(Req));
+            //Logger.Info(responsejsonO.SystemName);
             return "true after auth";
         }
 
@@ -236,7 +241,7 @@ namespace Sync365
                 Functionso.SendTDMSMessage(ThisApplication, mBody, mBody, project.Attributes["A_User_GIP"].User);
 
                 ThisApplication.SaveChanges();
-                ThisApplication.SaveContextObjects();
+                //ThisApplication.SaveContextObjects();
                 response = "true";
                 Logger.Info("GPPtransferProjectResponse: finished");
                 return response;
@@ -732,6 +737,8 @@ namespace Sync365
                     TDMSObject tdmsObject = ThisApplication.GetObjectByGUID(jObj.ObjGuidExternal);
                     if (tdmsObject != null)
                     {
+                        TDMSCollection collUsers = (TDMSCollection)ThisApplication.CreateCollection(TDMSCollectionType.tdmUsers);
+                        String text = "";
                         switch (jObj.ObjStatus)
                         {
                             case "STATUS_TechDoc_InUse":
@@ -762,9 +769,21 @@ namespace Sync365
                                 }
                                 ThisApplication.SaveChanges();
                                 ClosePackageUnload(O_Package_Unload);
-                                TDMSUser tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
-                                String text = $"Документ \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" введен в действие";
-                                Functionso.SendTDMSMessage(ThisApplication, text, text, tdmsUser);
+                                foreach (TDMSRole role in O_Package_Unload.RolesByDef("ROLE_DEVELOPER"))
+                                {
+                                    if (role.User != null)
+                                    {
+                                        collUsers.Add(role.User);
+                                    }
+                                };
+                                if (collUsers.Count > 0)
+                                {
+                                    text = $"Документ \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" введен в действие";
+                                    foreach (TDMSUser tdmUser in collUsers)
+                                    {
+                                        Functionso.SendTDMSMessage(ThisApplication, text, text, tdmUser);
+                                    }
+                                };
                                 //response = "true";
                                 break;
 
@@ -796,9 +815,21 @@ namespace Sync365
                                 }
                                 ThisApplication.SaveChanges();
                                 ClosePackageUnload(O_Package_Unload);
-                                tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
-                                text = $"Документ \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" аннулирован";
-                                Functionso.SendTDMSMessage(ThisApplication, text, text, tdmsUser);
+                                //TDMSCollection collUsers = (TDMSCollection)ThisApplication.CreateCollection(TDMSCollectionType.tdmUsers);
+                                foreach (TDMSRole role in O_Package_Unload.RolesByDef("ROLE_DEVELOPER"))
+                                {
+                                    if (role.User != null)
+                                    {
+                                        collUsers.Add(role.User);
+                                    }
+                                };
+                                if (collUsers.Count > 0) {
+                                    text = $"Документ \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" аннулирован";
+                                    foreach(TDMSUser tdmUser in collUsers)
+                                    {
+                                        Functionso.SendTDMSMessage(ThisApplication, text, text, tdmUser);
+                                    }
+                                };
                                 response = "true";
                                 break;
 
@@ -810,7 +841,8 @@ namespace Sync365
                                     O_DocClaim.Status = ThisApplication.Statuses["S_DocClaim_NotActual"];
                                 }
                                 ThisApplication.SaveChanges();
-                                tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
+
+                                TDMSUser tdmsUser = tdmsObject.Attributes["A_User_Author"].User;
                                 text = $"Реестр замечаний \"{tdmsObject.Attributes["A_Str_Designation"].Value}\" закрыт";
                                 Functionso.SendTDMSMessage(ThisApplication, text, text, tdmsUser);
                                 //response = "true";
