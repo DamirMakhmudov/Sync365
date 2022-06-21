@@ -44,12 +44,14 @@ namespace Sync365
         /* SEND TDMS MESSAGE */
         public static void SendTDMSMessage(TDMSApplication ThisApplication, String mSubject, String mBody, TDMSUser mTo)
         {
+            Console.WriteLine("s");
             TDMSMessage Msg = ThisApplication.CreateMessage();
             Msg.Subject = mSubject;
             Msg.Body = mBody;
             Msg.ToAdd(mTo);
             Msg.System = false;
             Msg.Send();
+            ThisApplication.SaveChanges();
         }
 
         /* SEND POST REQUEST WITH JSON */

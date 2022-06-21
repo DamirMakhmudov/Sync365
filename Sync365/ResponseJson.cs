@@ -23,5 +23,13 @@ namespace Sync365
         public string ObjStatus { get; set; }
         public string StatusModifyTime { get; set; }
         public string ObjDefName{ get; set; }
+        public List<jAttr> Attrs { get; set; }
+    }
+    public class jAttr
+    {
+        public string Description { get; set; }
+        public string SysName { get; set; }
+        public string Type { get; set; }
+        public string Value { get; set; }
     }
 }

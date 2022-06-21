@@ -127,6 +127,8 @@ namespace Sync365
         /// Атрибут - Завершен
         /// </summary>
         public string ATTR_REGISTRY_FACT_DATE_OF_FINISH { get; set; }
+
+        public int ATTR_Registry_CycleNum { get; set; }
     }
 
     /// <summary>
