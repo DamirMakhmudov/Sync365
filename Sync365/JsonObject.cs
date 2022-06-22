@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace Sync365
 {
-    public class JsonObject
+    public class JsonObject_
     {
-        public JsonObject() { }
+        public JsonObject_() { }
         public string ObjGuid { get; set; }
         public string ObjStatus { get; set; }
         public string Result { get; set; }

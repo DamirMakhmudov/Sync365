@@ -26,7 +26,7 @@ namespace Sync365
         //public TDMSApplication ThisApplication;
         public ILogger Logger { get; set; }
         //public TDMSObject thisobject;
-        public JsonObject jsonobject;
+        public JsonPackageRZ jsonobject;
         public string response;
 
         public static string JSONReader(HttpRequest Req)
