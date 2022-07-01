@@ -44,7 +44,6 @@ namespace Sync365
         /* SEND TDMS MESSAGE */
         public static void SendTDMSMessage(TDMSApplication ThisApplication, String mSubject, String mBody, TDMSUser mTo)
         {
-            Console.WriteLine("s");
             TDMSMessage Msg = ThisApplication.CreateMessage();
             Msg.Subject = mSubject;
             Msg.Body = mBody;

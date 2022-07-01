@@ -150,13 +150,22 @@ namespace Sync365
         [Route("api/test"), HttpPost]
         public string Test([FromBody] JsonPackageRZ jsonobjectO)
         {
-            TDMSObject obj = ThisApplication.GetObjectByGUID("{FB6E9513-ACAB-4B81-98A7-D6A975F6B206}");
-            string str = obj.GetType().GetProperty("Description").GetValue(obj, null).ToString();
+            TDMSObject pv = ThisApplication.GetObjectByGUID("{F5377FCC-3798-42B6-A3D5-131C4F8663B7}");
+            TDMSObject pd = pv.Attributes["A_Ref_Bill"].Object;
+            TDMSObject pdd = pd;
+            while (pd.ReferencedBy.ObjectsByDef("O_Bill").Count != 0) {
+                pdd = pd;
+                pd = pd.ReferencedBy.ObjectsByDef("O_Bill")[0];
+
+            }
+            pv = pd.ReferencedBy.ObjectsByDef("O_Package_Unload")[0];
+
+            //string str = obj.GetType().GetProperty("Description").GetValue(obj, null).ToString();
 
             //TDMSUsers collUsers = (TDMSUsers)ThisApplication.CreateCollection(TDMSCollectionType.tdmUsers);
 
             //TDMSObject obj = ThisApplication.GetObjectByGUID(jsonobjectO.ObjGuid);
-            //TDMSUser user = obj.Attributes["A_User_GIP"].User;
+            //TDMSUser user = obj.Attributes["A_User_GIP"].User; 
             //Logger.Info(user.Description);
             //Logger.Info("start sending");
             //Functionso.SendTDMSMessage(ThisApplication, "sub", "body", user);
@@ -174,7 +183,7 @@ namespace Sync365
 
             //var data = Functionso.SendRequestPOST(ThisApplication, json, "http://192.168.16.113:444/", "api/authtest");
             //Logger.Info(data);
-            return str;
+            return "true";
         }
 
         /* Authorization test */
@@ -317,12 +326,21 @@ namespace Sync365
                 Logger.Info("Flow 2. GPPgetClaimRegistry: started");
                 string response = "true";
                 TDMSObject O_Package_Unload = ThisApplication.GetObjectByGUID(jsonobject.O_Package_Unload.ToString());
-                if (O_Package_Unload == null)
+                if (O_Package_Unload== null)
                 {
                     response = $"Не найден 'Пакет выгрузки'{ jsonobject.O_Package_Unload.ToString() }";
                     Logger.Info(response);
                     return response;
                 };
+
+                TDMSObject o_Bill = O_Package_Unload.Attributes["A_Ref_Bill"].Object;
+                TDMSObject o_Billd = o_Bill;
+                while (o_Bill.ReferencedBy.ObjectsByDef("O_Bill").Count != 0)
+                {
+                    o_Billd = o_Bill;
+                    o_Bill = o_Bill.ReferencedBy.ObjectsByDef("O_Bill")[0];
+                };
+                O_Package_Unload = o_Billd.ReferencedBy.ObjectsByDef("O_Package_Unload")[0];
 
                 Logger.Info($"Найден 'Пакет выгрузки' { jsonobject.O_Package_Unload.ToString() }");
                 TDMSObject O_ClaimRegistry = ThisApplication.GetObjectByGUID(jsonobject.RZ.External_Guid.ToString());
@@ -589,11 +607,11 @@ namespace Sync365
                                 {
                                     O_ClaimRegistry.Status = ThisApplication.Statuses["S_ClaimRegistry_NotActual"];
 
-                                    /* Уведомление Реестр закрыт */
+                                    /* Уведомление "Реестр закрыт" */
                                     subject = $"Реестр замечаний \"{O_ClaimRegistry.Attributes["A_Str_Designation"].Value}\" закрыт в tdm365";
                                     text = $"Работа с реестром замечаний \"{O_ClaimRegistry.Attributes["A_Str_Designation"].Value}\" к \"{tdmsObject.Description}\" в tdm365 завершена. \n" +
                                         $"Завершил работу с реестром: {jObj.StatusModifyUser.Description} \n" +
-                                        $"Контактные данные: <Контактные данные пользователя из tdm365>";
+                                        $"Контактные данные: {jObj.StatusModifyUser.Tel}";
 
                                     foreach (TDMSRole role in O_ClaimRegistry.RolesByDef("ROLE_DEVELOPER"))
                                     {
@@ -651,8 +669,8 @@ namespace Sync365
                                     /* Уведомление Реестр закрыт */
                                     subject = $"Реестр замечаний \"{O_ClaimRegistry.Attributes["A_Str_Designation"].Value}\" закрыт в tdm365";
                                     text = $"Работа с реестром замечаний \"{O_ClaimRegistry.Attributes["A_Str_Designation"].Value}\" к \"{tdmsObject.Description}\" в tdm365 завершена. \n" +
-                                        $"Завершил работу с реестром: <ФИО пользователя из tdm365> \n" +
-                                        $"Контактные данные: <Контактные данные пользователя из tdm365>";
+                                        $"Завершил работу с реестром:  {jObj.StatusModifyUser.Description} \n" +
+                                        $"Контактные данные: {jObj.StatusModifyUser.Tel}";
 
                                     foreach (TDMSRole role in O_ClaimRegistry.RolesByDef("ROLE_DEVELOPER"))
                                     {
@@ -668,10 +686,10 @@ namespace Sync365
                                     }
                                 };
 
-                                /* Находим "Пакет выгрузки" связанный с этим Доком*/
+                                /* Находим "Пакет выгрузки" связанный с этим Доком */
                                 O_Package_Unload = tdmsObject.Attributes["A_Ref_Package_Unload"].Object;
 
-                                /* В табличном атрибуте мменяем статус напротив Дока */
+                                /* В табличном атрибуте меняем статус напротив Дока */
                                 Rows = O_Package_Unload.Attributes["A_Table_DocReview"].Rows;
                                 foreach (TDMSTableAttributeRow row in Rows)
                                 {
@@ -698,8 +716,41 @@ namespace Sync365
                                 ClosePackageUnload(O_Package_Unload);
                                 ThisApplication.SaveChanges();
                                 break;
+                            
+                            case "STATUS_TechDoc_OnApproval": //На утверждении
 
-                            case "STATUS_TechDoc_OnApproval":
+                                /* Находим "Пакет выгрузки" связанный с этим Доком*/
+                                O_Package_Unload = tdmsObject.Attributes["A_Ref_Package_Unload"].Object;
+
+                                /* В табличном атрибуте меняем статус напротив Дока */
+                                Rows = O_Package_Unload.Attributes["A_Table_DocReview"].Rows;
+                                foreach (TDMSTableAttributeRow row in Rows)
+                                {
+                                    TDMSObject rowObject = row.Attributes["A_Ref_Doc"].Object;
+                                    if (rowObject.InternalObject.ObjectGuid == tdmsObject.InternalObject.ObjectGuid)
+                                    {
+                                        row.Attributes["A_Cls_DocReviewStatus"].Value = ThisApplication.Classifiers["N_DocReview_Status"].Classifiers["N_DocReview_Status_OnApproval"];
+                                        break;
+                                    }
+                                };
+
+                                /* Уведомление "Документ передан на утверждение" */
+                                subject = $"Документ {tdmsObject.Description} передан на утверждение в tdm365";
+                                text = subject;
+                                foreach (TDMSRole role in O_Package_Unload.RolesByDef("ROLE_DEVELOPER"))
+                                {
+                                    if (role.User != null)
+                                    {
+                                        Functionso.SendTDMSMessage(ThisApplication, subject, text, role.User);
+                                    }
+                                };
+
+                                /* Закрытие ПВ*/
+                                ClosePackageUnload(O_Package_Unload);
+                                ThisApplication.SaveChanges();
+                                break;
+
+                            case "STATUS_TechDoc_Reviewed": //Рассмотрен
 
                                 /* Всем РЗ и ЗМ ставим статус "Не актуально" */
                                 RZs = tdmsObject.ReferencedBy.ObjectsByDef("O_ClaimRegistry");
@@ -710,8 +761,8 @@ namespace Sync365
                                     /* Уведомление Реестр закрыт */
                                     subject = $"Реестр замечаний \"{O_ClaimRegistry.Attributes["A_Str_Designation"].Value}\" закрыт в tdm365";
                                     text = $"Работа с реестром замечаний \"{O_ClaimRegistry.Attributes["A_Str_Designation"].Value}\" к \"{tdmsObject.Description}\" в tdm365 завершена. \n" +
-                                        $"Завершил работу с реестром: <ФИО пользователя из tdm365> \n" +
-                                        $"Контактные данные: <Контактные данные пользователя из tdm365>";
+                                        $"Завершил работу с реестром:  {jObj.StatusModifyUser.Description} \n" +
+                                        $"Контактные данные: {jObj.StatusModifyUser.Tel}";
 
                                     foreach (TDMSRole role in O_ClaimRegistry.RolesByDef("ROLE_DEVELOPER"))
                                     {
@@ -727,7 +778,7 @@ namespace Sync365
                                     }
                                 };
 
-                                /* Находим "Пакет выгрузки" связанный с этим Доком*/
+                                /* Находим "Пакет выгрузки" связанный с этим Доком */
                                 O_Package_Unload = tdmsObject.Attributes["A_Ref_Package_Unload"].Object;
 
                                 /* В табличном атрибуте мменяем статус напротив Дока */
@@ -742,8 +793,8 @@ namespace Sync365
                                     }
                                 };
 
-                                /* Уведомление "Рассмотрение документа завершено " */
-                                subject = $"Документ {tdmsObject.Description} рассмотрен  в tdm365";
+                                /* Уведомление "Рассмотрение документа завершено" */
+                                subject = $"Документ {tdmsObject.Description} рассмотрен в tdm365";
                                 text = $"Рассмотрение документа {tdmsObject.Description} в tdm365 успешно завершено";
                                 foreach (TDMSRole role in O_Package_Unload.RolesByDef("ROLE_DEVELOPER"))
                                 {
@@ -757,6 +808,7 @@ namespace Sync365
                                 ClosePackageUnload(O_Package_Unload);
                                 ThisApplication.SaveChanges();
                                 break;
+
                             case "STATUS_REVIEW_COMPLETED":
 
                                 /* Всем РЗ и ЗМ ставим статус "Не актуально" */
@@ -824,10 +876,10 @@ namespace Sync365
                     return "Пакет выгрузки не найден";
                 };
                 TDMSObject O_Package_Unload = O_Bill.ReferencedBy.ObjectsByDef("O_Package_Unload")[0];
-
+                //string [] arr =
                 foreach (TDMSTableAttributeRow row in O_Package_Unload.Attributes["A_Table_DocReview"].Rows)
                 {
-                    if (row.Attributes["A_Cls_DocReviewStatus"].Classifier.SysName != "N_DocReview_Status_Reviewed")
+                    if (row.Attributes["A_Cls_DocReviewStatus"].Classifier.SysName != "N_DocReview_Status_Annul" && row.Attributes["A_Cls_DocReviewStatus"].Classifier.SysName != "N_DocReview_Status_Actual")
                     {
                         return "Не все документы прошли рассмотрение";
                     }
