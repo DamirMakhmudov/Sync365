@@ -50,8 +50,7 @@ public class AuthorizationServiceTDMS
         catch (WebException ex)
         {
             WebResponse response = (ex.Response as WebResponse);
-            if (response == null)
-                throw;
+            if (response == null) throw;
             StreamReader sr = new StreamReader(response.GetResponseStream());
             jsonString = sr.ReadToEnd();
             Newtonsoft.Json.Linq.JObject jObj = Newtonsoft.Json.Linq.JObject.Parse(jsonString);
